@@ -7,9 +7,9 @@
 #include "ThompsonsConstruction.h"
 #include "transducer.h"
 #include "bimachine.h"
-
 #include "contextualReplacementRule.h"
 #include "twostepBimachine.h"
+#include "classicalBimachine.h"
 
 std::string readFromFile(const std::filesystem::path& path, char delim = '\n')
 {
@@ -105,9 +105,9 @@ int main(int argc, char** argv) try
 	{
 		const std::string alphabet = "axb";
 		std::vector<ContextualReplacementRule> rules{{"[ab,bbb]"s, "aa"s, "_"s},
-													 {"[b,a]"s, "b"s, "a"s},
-													 {"[a,_][a,_]*[_,x]|[_,y]"s, "aa"s, "_"s},
-													 //{"[a,x]*"s, "aaa*"s, "b|a"s},
+													 {"[b,z]"s, "b"s, "a"s},
+													 //{"[a,_][a,_]*[_,x]|[_,y]"s, "aa"s, "_"s},
+													 {"[a,x]*"s, "aaa*"s, "b|a"s},
 													 {"[_,c]"s, "_"s, "_"s},
 		};
 		/*std::cerr << "test:\n";
@@ -127,13 +127,25 @@ int main(int argc, char** argv) try
 		//TSBM_LeftAutomaton left(std::move(batch));
 
 		//TSBM_RightAutomaton right(std::move(batch));
-		TwostepBimachine tsbm(std::move(batch));
+		TwostepBimachine tsbm(batch);
 		std::cout << tsbm("aa") << std::endl;
 		std::cout << tsbm("aaaabba") << std::endl;
+		std::cout << tsbm("aaaaba") << std::endl;
 		std::cout << tsbm("abaaaaaaaabba") << std::endl;
 		std::cout << tsbm("abaaaabaaaabba") << std::endl;
 		std::cout << tsbm("abaabaaaabba") << std::endl;
-		std::cout << tsbm("abaaabaaaabba") << std::endl;
+		std::cout << tsbm("abaaabaaaabbaaaaaa") << std::endl;
+
+		std::cout << "-----------------------\n";
+
+		BimachineWithFinalOutput bmfo(batch);
+		std::cout << bmfo("aa") << std::endl;
+		std::cout << bmfo("aaaabba") << std::endl;
+		std::cout << bmfo("aaaaba") << std::endl;
+		std::cout << bmfo("abaaaaaaaabba") << std::endl;
+		std::cout << bmfo("abaaaabaaaabba") << std::endl;
+		std::cout << bmfo("abaabaaaabba") << std::endl;
+		std::cout << bmfo("abaaabaaaabbaaaaaa") << std::endl;
 	}
 
 	/*{

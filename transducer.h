@@ -24,6 +24,7 @@ private:
 	template<bool, class>
 	friend class Transducer;
 	friend class TwostepBimachine;
+	friend class BimachineWithFinalOutput;
 
 	[[nodiscard]] ClassicalFSA project(std::invocable<LabelType> auto proj) &&
 		requires std::convertible_to<decltype(proj(std::declval<LabelType>())), SymbolOrEpsilon>
@@ -67,12 +68,7 @@ private:
 public:
 	Transducer() = default;
 	Transducer(const MonoidalFSA<LabelType>& mFSA): MonoidalFSA<LabelType>(mFSA) {}
-	Transducer(MonoidalFSA<LabelType>&& mFSA): MonoidalFSA<LabelType>(std::move(mFSA))
-	{
-		/*if constexpr(std::is_same_v<Label, Symbol_Word>)
-			for(auto& tr : this->transitions.buffer)
-				std::erase(tr.label.second, Constants::Epsilon);*/
-	}
+	Transducer(MonoidalFSA<LabelType>&& mFSA): MonoidalFSA<LabelType>(std::move(mFSA)) {}
 
 	[[nodiscard]] LetterTransducer expand() &&
 		requires (!IsLetterType)
@@ -167,35 +163,14 @@ public:
 
 		// final states and outputs for epsilon
 		rtime.final = this->final;
-		/*for(State st = 0; st < this->statesCnt; st++)
-			if(this->initial.contains(st)) // why???
-				for(State st : this->initial)
-					for(const auto& tr : closure(st))
-						if(this->final.contains(tr.To()))
-						{
-							outputsForEpsilon.push_back(tr.Label());
-							rtime.final.insert(st);
-							// break;
-						}*/
-
-		if(outputsForEpsilon)
-		{
-			for(State st : this->initial)
-				for(const auto& tr : closure(st))
-					if(this->final.contains(tr.To()))
-					{
+		for(State st : this->initial)
+			for(const auto& tr : closure(st))
+				if(this->final.contains(tr.To()))
+				{
+					if(outputsForEpsilon)
 						outputsForEpsilon->insert(tr.Label());
-						rtime.final.insert(st); //!!!
-					}
-		}
-		else
-			for(State st : this->initial)
-				for(const auto& tr : closure(st))
-					if(this->final.contains(tr.To()))
-					{
-						rtime.final.insert(st); //!!!
-						break;
-					}
+					rtime.final.insert(st);
+				}
 
 		// transitions
 		for(const auto& tr : this->transitions.buffer)
@@ -207,7 +182,6 @@ public:
 						lbl.reserve(trPrev.Label().size() + 1 + trNext.Label().size());
 						lbl.append(trPrev.Label()).push_back(tr.Label().coords[1]);
 						lbl.append(trNext.Label());
-						//std::erase(lbl, Constants::Epsilon);
 						rtime.transitions.buffer.emplace_back(trPrev.To(), Symbol_Word{tr.Label().coords[0], std::move(lbl)}, trNext.To());
 					}
 

@@ -23,6 +23,7 @@ class ClassicalFSA: public MonoidalFSA<SymbolOrEpsilon>
 	friend class TSBM_LeftAutomaton;
 	friend class TSBM_RightAutomaton;
 	friend class TwostepBimachine;
+	friend class BimachineWithFinalOutput;
 
 	virtual std::vector<SymbolOrEpsilon> findPseudoAlphabet() const override
 	{
@@ -121,20 +122,24 @@ public:
 
 	// *this must be deterministic, total and the transitions must be sorted by From() in ascending order, then by Label() according to alphabetOrder
 	// otherwise the behavior is undefined
+	State successor(State from, Symbol with) const
+	{
+		if(from >= statesCnt)
+			throw std::out_of_range("cannot get successor: state 'from' is out of range");
+		auto letterIndexIterator = alphabetOrder.find(with);
+		if(letterIndexIterator == alphabetOrder.end())
+			throw std::runtime_error("cannot get successor: '" + std::string{with} + "' is not in the alphabet");
+		return (transitions(from).begin() + letterIndexIterator->second)->To();
+	}
+	// *this must satisfy the precondition for calling 'successor'
 	std::vector<State> findPath(const std::ranges::forward_range auto& input) const
 	{
 		std::vector<State> path;
 		path.reserve(input.size() + 1);
-		State currSt = *this->initial.begin();
+		State currSt = *initial.begin();
 		path.push_back(currSt);
 		for(Symbol s : input)
-		{
-			auto letterIndexIterator = this->alphabetOrder.find(s);
-			if(letterIndexIterator == this->alphabetOrder.end())
-				throw std::runtime_error("input string contains '" + std::string{s} + "' which is not in the alphabet");
-			currSt = (this->transitions(currSt).begin() + letterIndexIterator->second)->To();
-			path.push_back(currSt);
-		}
+			path.push_back(currSt = successor(currSt, s));
 		return path;
 	}
 };

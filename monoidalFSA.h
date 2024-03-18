@@ -29,12 +29,13 @@ MonoidalFSA<LabelType> regexToMFSA(RegularExpression<LabelType> re, const std::s
 
 namespace Internal
 {
-	template<class StateType, class LabelType>
+	template<class StateType, class LabelType = SymbolOrEpsilon>
 	struct FSA
 	{
 		using state_type = StateType;
 		using label_type = LabelType;
 
+		std::vector<const StateType*> states;
 		std::map<StateType, State> stateNames;
 		TransitionList<LabelType> transitions;
 		std::unordered_set<State> initial, final;

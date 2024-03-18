@@ -5,18 +5,21 @@
 #include <tuple>
 #include <utility>
 #include <ranges>
+#include <type_traits>
+#include <array>
+#include <algorithm>
 
 template<class Ret, class... Args>
-	requires(sizeof...(Args) > 0)
+	requires((sizeof...(Args) > 0) && ... && std::is_unsigned_v<Args>)
 class Function
 {
-public: //!!!
 	using element_type = std::tuple<Ret, Args...>;
 	using leftmost_arg_type = std::tuple_element_t<1, element_type>;
 	static constexpr std::size_t argsCnt = sizeof...(Args);
 	static constexpr std::size_t skip = -2;
 	std::vector<element_type> buf;
 	std::vector<std::size_t> startInd;
+	bool prepared = false;
 
 	std::span<const element_type> search_first_arg(const leftmost_arg_type& arg) const
 	{
@@ -65,13 +68,23 @@ public: //!!!
 		}
 	}
 public:
-	Function() = default;
+	/*Function() = default;
 	Function(const std::vector<element_type>& buf, const std::array<std::size_t, argsCnt>& max_values): Function(auto(buf), max_values) {}
 	Function(std::vector<element_type>&& buf, const std::array<std::size_t, argsCnt>& max_values): buf(std::move(buf))
 	{
 		sort<argsCnt>(max_values);
+		prepared = true;
+	}*/
+	void emplace(const Ret& ret, const Args&... args)
+	{
+		buf.emplace_back(ret, args...);
+		prepared = false;
 	}
-
+	void prepare(const std::array<std::size_t, argsCnt>& max_values)
+	{
+		sort<argsCnt>(max_values);
+		prepared = true;
+	}
 	const Ret& operator()(const Args&... args) const
 	{
 		element_type value({}, args...);

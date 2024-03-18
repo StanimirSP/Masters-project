@@ -34,6 +34,7 @@ private:
 		return map;
 	}
 public:
+	TSBM_LeftAutomaton(const std::vector<ContextualReplacementRuleRepresentation>& batch): TSBM_LeftAutomaton(auto(batch)) {}
 	TSBM_LeftAutomaton(std::vector<ContextualReplacementRuleRepresentation>&& batch)
 	{
 		std::unordered_map<State, std::size_t> finalMap = mapFinalStates(batch);
@@ -60,6 +61,25 @@ public:
 			std::cerr << "}\n";
 		}
 	}
+	auto init_index(std::vector<std::uint32_t>& index_of_left_state) const
+	{
+		using container_type = decltype(containsFinalOf)::value_type;
+		auto cmp = [](const container_type* a, const container_type* b) { return *a < *b; };
+		std::map<const container_type*, std::uint32_t, decltype(cmp)> map(cmp);
+		index_of_left_state.reserve(containsFinalOf.size());
+		for(std::size_t i = 0; i < containsFinalOf.size(); i++)
+			index_of_left_state.push_back(map.try_emplace(&containsFinalOf[i], map.size()).first->second);
+		return map;
+	}
+	/*State successor(State from, Symbol with) const
+	{
+		if(from >= DFA.statesCnt)
+			throw std::out_of_range("cannot get successor: state 'from' is out of range");
+		auto letterIndexIterator = DFA.alphabetOrder.find(with);
+		if(letterIndexIterator == DFA.alphabetOrder.end())
+			throw std::runtime_error("cannot get successor: '" + std::string{with} + "' is not in the alphabet");
+		return (DFA.transitions(from).begin() + letterIndexIterator->second)->To();
+	}*/
 };
 
 struct TSBM_RightAutomaton
@@ -105,30 +125,17 @@ struct TSBM_RightAutomaton
 		}
 	};
 
-	Internal::FSA<State_t, SymbolOrEpsilon> A_R;
-	/*ClassicalFSA*/ Transducer<false, Symbol_Word> A_T;
+	Internal::FSA<State_t> A_R;
+	Transducer<false, Symbol_Word> A_T;
 	TransitionList<Symbol_Word> Delta_T;
 	std::vector<State> final_center_of_type; // final_center_of_type[r] is the name of the final state of 'batch[r].center_rt' in the union of all 'batch[i].center_rt'
 	std::unordered_map<State, std::uint32_t> type_of_init_center, // maps initial states of the union of all 'batch[i].center_rt' to the number of the corresponding replacement rule
 		type_of_final_center, // maps final states of the union of all 'batch[i].center_rt' to the number of the corresponding replacement rule
 		type_of_final_right_rev; // maps final states of the union of all reversed 'batch[i].right' to the number of the corresponding replacement rule
 private:
-	/*ClassicalFSA construct_A_RU(const std::vector<ContextualReplacementRuleRepresentation>& batch)
+	Transducer<false, Symbol_Word> construct_A_T(std::vector<ContextualReplacementRuleRepresentation>& batch)
 	{
-		ClassicalFSA A_RU;
-		State offset = 0;
-		for(std::size_t i = 0; i < batch.size(); i++)
-		{
-			type_of_init[offset + *batch[i].center_rt.initial.begin()] = i;
-			type_of_final[offset + *batch[i].center_rt.final.begin()] = i;
-			offset += batch[i].center_rt.statesCnt + batch[i].right.statesCnt;
-			A_RU = A_RU.Union(batch[i].center_rt.Domain().Concat_right(batch[i].right).reverse());
-		}
-		return A_RU;
-	}*/
-	/*ClassicalFSA*/ Transducer<false, Symbol_Word> construct_A_T(std::vector<ContextualReplacementRuleRepresentation>& batch)
-	{
-		/*ClassicalFSA*/ Transducer<false, Symbol_Word> A_T;
+		Transducer<false, Symbol_Word> A_T;
 		State offset = 0;
 		final_center_of_type.reserve(batch.size());
 		for(std::size_t i = 0; i < batch.size(); i++)
@@ -137,7 +144,7 @@ private:
 			type_of_init_center[offset + *batch[i].center_rt.initial.begin()] = i;
 			type_of_final_center[final_center_of_type[i]] = i;
 			offset += batch[i].center_rt.statesCnt;
-			A_T = A_T.Union(batch[i].center_rt/*.Domain()*/.reverse());
+			A_T = A_T.Union(batch[i].center_rt.reverse());
 		}
 		return A_T;
 	}
@@ -153,20 +160,6 @@ private:
 		}
 		return A_rho;
 	}
-	/*State_t computeInitial_A_R(const ClassicalFSA& A_RU) const
-	{
-		State_t init;
-		for(State st : A_RU.initial)
-		{
-			init.R.insert(st);
-			if(type_of_final.contains(st))
-				init.g.push_back(st);
-		}
-		std::ranges::sort(init.g);
-		for(std::size_t i = 0; i < init.g.size(); i++)
-			init.g_inv.emplace_hint(init.g_inv.end(), init.g[i], i);
-		return init;
-	}*/
 	State_t computeInitial_A_R(const ClassicalFSA& A_rho) const
 	{
 		State_t init;
@@ -204,27 +197,28 @@ private:
 			next.g_inv.emplace(next.g[i], i);	// add the final states in next.g in next.g_inv
 	}
 public:
+	TSBM_RightAutomaton(const std::vector<ContextualReplacementRuleRepresentation>& batch): TSBM_RightAutomaton(auto(batch)) {}
 	TSBM_RightAutomaton(std::vector<ContextualReplacementRuleRepresentation>&& batch)
 	{
-		//ClassicalFSA A_RU = construct_A_RU(batch);
 		ClassicalFSA A_rho = construct_A_rho(batch);
 		A_T = construct_A_T(batch);
 		A_rho.transitions.sort();
 		A_T.transitions.sortByTo();
-		//sortByLabel(A_T.transitions);
+		sortByLabel(A_T.transitions); // needed for calculate_mu
 		A_T.transitions.sort();
 
 		A_R.stateNames.emplace(computeInitial_A_R(A_rho), 0);
+		A_R.states.push_back(&A_R.stateNames.begin()->first);
 		A_R.initial.insert(0);
 		A_R.transitions.startInd.push_back(0);
 		std::queue<const State_t*> q;
-		q.push(&A_R.stateNames.begin()->first);
+		q.push(A_R.states.back());
 
 		State_t nextStates[std::numeric_limits<USymbol>::max() + 1]; // not good if USymbol is later changed to a larger type
 																	 // then this may cause stack overflow
 		for(State step = 0; !q.empty(); step++)
 		{
-			auto& currState = *q.front();
+			const State_t& currState = *q.front();
 			q.pop();
 
 			for(State st : currState.g)
@@ -243,7 +237,10 @@ public:
 				auto [it, inserted] = A_R.stateNames.try_emplace(std::move(next), A_R.stateNames.size());
 				next.clear();
 				if(inserted)
-					q.push(&it->first);
+				{
+					A_R.states.push_back(&it->first);
+					q.push(A_R.states.back());
+				}
 				A_R.transitions.buffer.emplace_back(step, letter, it->second);
 			}
 			A_R.transitions.startInd.push_back(A_R.transitions.buffer.size());
@@ -272,6 +269,15 @@ public:
 			std::cerr << "type(" << st << ")=" << type << " ";
 		std::cerr << "\n";
 	}
+	auto init_index(std::vector<std::uint32_t>& index_of_right_state) const
+	{
+		auto cmp_only_g = [](const State_t* a, const State_t* b) { return a->g < b->g; };
+		std::map<const State_t*, std::uint32_t, decltype(cmp_only_g)> map(cmp_only_g);
+		index_of_right_state.resize(A_R.stateNames.size());
+		for(const auto& [st, st_name] : A_R.stateNames)
+			index_of_right_state[st_name] = map.try_emplace(&st, map.size()).first->second;
+		return map;
+	}
 	std::vector<Word>& calculate_mu(std::vector<std::size_t>& buf_mu,
 									std::vector<Word>& buf_outputs,
 									State q,
@@ -294,6 +300,32 @@ public:
 		}
 		return buf_outputs;
 	}
+	std::pair<State, Word> calculate_g_of_mu(State q, Symbol letter, const TSBM_RightAutomaton::State_t& right_state) const
+	{
+		std::size_t mu = std::numeric_limits<std::size_t>::max();
+		Word output;
+		for(const auto& tr : std::ranges::equal_range(A_T.transitions(q), letter, {}, [](const Transition<Symbol_Word>& tr) { return tr.Label().first; })) try
+		{
+			std::size_t ind_in_g = right_state.g_inv.at(tr.To());
+			if(mu > ind_in_g)
+			{
+				mu = ind_in_g;
+				output = tr.Label().second;
+			}
+		}
+		catch(const std::out_of_range&) {} // if tr.To() is not in Rng(g), do nothing
+		return {right_state.g[mu], std::move(output)};
+	}
+	const State_t& successor(const State_t& from, Symbol with) const
+	{
+		auto from_it = A_R.stateNames.find(from);
+		if(from_it == A_R.stateNames.end())
+			throw std::out_of_range("cannot get successor: the state 'from' not found");
+		auto letterIndexIterator = A_R.alphabetOrder.find(with);
+		if(letterIndexIterator == A_R.alphabetOrder.end())
+			throw std::runtime_error("cannot get successor: '" + std::string{with} + "' is not in the alphabet");
+		return *A_R.states[(A_R.transitions(from_it->second).begin() + letterIndexIterator->second)->To()];
+	}
 };
 
 class TwostepBimachine
@@ -306,28 +338,8 @@ class TwostepBimachine
 	Function<Word, State, State> psi_tau;
 	State q_err;
 	std::unordered_map<State, std::uint32_t> type_of_final_center;
-
-	auto init_index_of_left_state(const TSBM_LeftAutomaton& left)
-	{
-		using container_type = decltype(left.containsFinalOf)::value_type;
-		auto cmp = [](const container_type* a, const container_type* b) { return *a < *b; };
-		std::map<const container_type*, std::uint32_t, decltype(cmp)> map(cmp);
-		index_of_left_state.reserve(left.containsFinalOf.size());
-		for(std::size_t i = 0; i < left.containsFinalOf.size(); i++)
-			index_of_left_state.push_back(map.try_emplace(&left.containsFinalOf[i], map.size()).first->second);
-		return map;
-	}
-	auto init_index_of_right_state(const TSBM_RightAutomaton& right)
-	{
-		auto cmp_only_g = [](const TSBM_RightAutomaton::State_t* a, const TSBM_RightAutomaton::State_t* b) { return a->g < b->g; };
-		//std::map<decltype(std::declval<TSBM_RightAutomaton::State_t>().g), std::uint32_t> map;
-		std::map<const TSBM_RightAutomaton::State_t*, std::uint32_t, decltype(cmp_only_g)> map(cmp_only_g);
-		index_of_right_state.resize(right.A_R.stateNames.size());
-		for(const auto& [st, st_name] : right.A_R.stateNames)
-			index_of_right_state[st_name] = map.try_emplace(/*st.g*/&st, map.size()).first->second;
-		return map;
-	}
-	static State nu(const TSBM_RightAutomaton& right, const std::ranges::forward_range auto& rules_left_ctx_ok, const TSBM_RightAutomaton::State_t& right_state)
+public:
+	static State nu(const TSBM_RightAutomaton & right, const std::ranges::forward_range auto & rules_left_ctx_ok, const TSBM_RightAutomaton::State_t & right_state)
 	{
 		for(State init : right_state.g_st)
 		{
@@ -350,17 +362,13 @@ class TwostepBimachine
 		}
 		return Constants::InvalidRule;
 	}
-public:
+	TwostepBimachine(const std::vector<ContextualReplacementRuleRepresentation>& batch_representation): TwostepBimachine(auto(batch_representation)) {}
 	TwostepBimachine(std::vector<ContextualReplacementRuleRepresentation>&& batch_representation)
 	{
 		TSBM_LeftAutomaton left{std::move(batch_representation)};
-		auto left_classes = init_index_of_left_state(left);
+		auto left_classes = left.init_index(index_of_left_state);
 		TSBM_RightAutomaton right{std::move(batch_representation)};
-		auto right_classes = init_index_of_right_state(right);
-		std::vector<std::tuple<State, State, USymbol, State>> buf_delta;
-		std::vector<std::tuple<Word, State, USymbol, State>> buf_psi_delta;
-		std::vector<std::tuple<State, State, State>> buf_tau;
-		std::vector<std::tuple<Word, State, State>> buf_psi_tau;
+		auto right_classes = right.init_index(index_of_right_state);
 
 		// defined outside of the loops to avoid reallocations
 		std::vector<std::size_t> mu(right.A_R.alphabet.size());
@@ -376,34 +384,34 @@ public:
 				for(std::size_t letter_ind = 0; letter_ind < mu.size(); letter_ind++)
 					if(mu[letter_ind] != std::numeric_limits<std::size_t>::max())
 					{
-						buf_delta.emplace_back(right_state_ptr->g[mu[letter_ind]], q, right.A_R.alphabet[letter_ind], right_ind);
+						delta.emplace(right_state_ptr->g[mu[letter_ind]], q, right.A_R.alphabet[letter_ind], right_ind);
 						if(!(outputs[letter_ind].size() == 1 && outputs[letter_ind][0] == right.A_R.alphabet[letter_ind]))
-							buf_psi_delta.emplace_back(outputs[letter_ind], q, right.A_R.alphabet[letter_ind], right_ind);
+							psi_delta.emplace(outputs[letter_ind], q, right.A_R.alphabet[letter_ind], right_ind);
 					}
 			}
 
 			for(const auto& [rules_left_ctx_ok_ptr, left_ind] : left_classes)
 			{
 				if(State init = nu(right, *rules_left_ctx_ok_ptr, *right_state_ptr); init != Constants::InvalidState)
-					buf_tau.emplace_back(init, left_ind, right_ind);
-				if(auto rule = minJ(right, batch_representation, *rules_left_ctx_ok_ptr, *right_state_ptr);
+					tau.emplace(init, left_ind, right_ind);
+				if(std::uint32_t rule = minJ(right, batch_representation, *rules_left_ctx_ok_ptr, *right_state_ptr);
 					rule != Constants::InvalidRule && !batch_representation[rule].output_for_epsilon->empty()
 				)
-					buf_psi_tau.emplace_back(*batch_representation[rule].output_for_epsilon, left_ind, right_ind);
+					psi_tau.emplace(*batch_representation[rule].output_for_epsilon, left_ind, right_ind);
 			}
 		}
 
 		this->left = std::move(left.DFA);
 		this->right = std::move(right.A_R).getMFSA();
-		tau = Function<State, State, State>(std::move(buf_tau), {left_classes.size() - 1, right_classes.size() - 1});
-		psi_tau = Function<Word, State, State>(std::move(buf_psi_tau), {left_classes.size() - 1, right_classes.size() - 1});
-		delta = Function<State, State, USymbol, State>(std::move(buf_delta), {q_err, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), right_classes.size() - 1});
-		psi_delta = Function<Word, State, USymbol, State>(std::move(buf_psi_delta), {q_err, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), right_classes.size() - 1});
+		tau.prepare({left_classes.size() - 1, right_classes.size() - 1});
+		psi_tau.prepare({left_classes.size() - 1, right_classes.size() - 1});
+		delta.prepare({q_err, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), right_classes.size() - 1});
+		psi_delta.prepare({q_err, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), right_classes.size() - 1});
 		type_of_final_center = std::move(right.type_of_final_center);
 
 		//debug
-		for(auto t : psi_tau.buf)
-			std::cerr << std::get<0>(t) << ' ' << std::get<1>(t) << ' ' << std::get<2>(t) << '\n';
+		/*for(auto t : psi_tau.buf)
+			std::cerr << std::get<0>(t) << ' ' << std::get<1>(t) << ' ' << std::get<2>(t) << '\n';*/
 
 		//test
 		/*psi_delta = Function<Word, State, USymbol, State>({{"ivan",0,0,0}, {"pataran",1,1,1}, {"bad",2,2,2}, {"bad2",2,2,2}}, {10,10,10});
