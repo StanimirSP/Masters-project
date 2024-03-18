@@ -12,8 +12,9 @@
 class BimachineWithFinalOutput
 {
 	ClassicalFSA left, right;
-	std::vector<std::uint32_t> index_of_left_state, index_of_right_state;
+	std::vector<std::uint32_t> index_of_left_state, index_of_right_state, index_of_leftctx_state;
 	Function<Word, State, USymbol, State> psi;
+	Function<Word, State> iota;
 
 	struct LeftState
 	{
@@ -51,22 +52,23 @@ class BimachineWithFinalOutput
 				if(State st = TwostepBimachine::nu(right, left.containsFinalOf[from.lctx], succ_right_state); st != Constants::InvalidState) // NonemptyMatchBegin(L, g)
 					return right.calculate_g_of_mu(st, letter, right_state);
 				// not NonemptyMatchBegin(L, g)
-				if(State st = TwostepBimachine::nu(right, left.containsFinalOf[next_lctx], right_state); st != Constants::InvalidState) // NonemptyMatchBegin(L', g')
-				{
-					if(std::uint32_t rule = TwostepBimachine::minJ(right, batch, left.containsFinalOf[from.lctx], succ_right_state); rule != Constants::InvalidRule) // EmptyMatchBegin(L, R)
-						return {st, *batch[rule].output_for_epsilon + letter};
-					return {st, {letter}};
-				}
+				std::uint32_t rule = TwostepBimachine::minJ(right, batch, left.containsFinalOf[from.lctx], succ_right_state);
+				return {
+					TwostepBimachine::nu(right, left.containsFinalOf[next_lctx], right_state),
+					(rule != Constants::InvalidRule ? *batch[rule].output_for_epsilon : Word{}) + letter
+				};
 			}
 			else if(succ_right_state.g_inv.contains(phi_of_g_it->second)) // NonemptyMatchNotFinished(phi, (R, g))
 				return right.calculate_g_of_mu(phi_of_g_it->second, letter, right_state);
 		}
 		else // phi((R, g)) is not defined, i.e. OutsideOfMatch(phi, (R, g))
-			if(State st = TwostepBimachine::nu(right, left.containsFinalOf[next_lctx], right_state); st != Constants::InvalidState) // NonemptyMatchBegin(L', g')
+			if(State st = TwostepBimachine::nu(right, left.containsFinalOf[from.lctx], succ_right_state); st == Constants::InvalidState) // not NonemptyMatchBegin(L, g) 
 			{
-				if(std::uint32_t rule = TwostepBimachine::minJ(right, batch, left.containsFinalOf[from.lctx], succ_right_state); rule != Constants::InvalidRule) // EmptyMatchBegin(L, R)
-					return {st, *batch[rule].output_for_epsilon + letter};
-				return {st, {letter}};
+				std::uint32_t rule = TwostepBimachine::minJ(right, batch, left.containsFinalOf[from.lctx], succ_right_state);
+				return {
+					TwostepBimachine::nu(right, left.containsFinalOf[next_lctx], right_state),
+					(rule != Constants::InvalidRule ? *batch[rule].output_for_epsilon : Word{}) + letter
+				};
 			}
 		return {Constants::InvalidState, {letter}};
 
@@ -86,16 +88,16 @@ class BimachineWithFinalOutput
 			if(st != Constants::InvalidState)
 				next.phi.emplace(right_ind, st);
 			if(!(output.size() == 1 && output[0] == letter))
-				psi.emplace(output, /*index_of_left_state[from.lctx]*/ from, letter, right_ind); // not correct, index_of_left_state must be different
+				psi.emplace(output, /*index_of_left_state[from.lctx]*/ from, letter, right_ind);
 		}
 		return next;
 	}
+
 public:
 	BimachineWithFinalOutput(const std::vector<ContextualReplacementRuleRepresentation>& batch_representation): BimachineWithFinalOutput(auto(batch_representation)) {}
 	BimachineWithFinalOutput(std::vector<ContextualReplacementRuleRepresentation>&& batch_representation)
 	{
 		TSBM_LeftAutomaton leftctx{std::move(batch_representation)};
-		std::vector<std::uint32_t> index_of_leftctx_state;
 		auto leftctx_classes = leftctx.init_index(index_of_leftctx_state);
 		TSBM_RightAutomaton right{std::move(batch_representation)};
 		auto right_classes = right.init_index(index_of_right_state);
@@ -127,6 +129,9 @@ public:
 				left.transitions.buffer.emplace_back(step, letter, it->second);
 			}
 			left.transitions.startInd.push_back(left.transitions.buffer.size());
+			std::uint32_t rule = TwostepBimachine::minJ(right, batch_representation, leftctx.containsFinalOf[left.states[currState]->lctx], *right.A_R.states[*right.A_R.initial.begin()]);
+			if(rule != Constants::InvalidRule)
+				iota.emplace(*batch_representation[rule].output_for_epsilon, currState);
 		}
 		left.transitions.isSorted = true;
 		left.alphabet = std::move(leftctx.DFA.alphabet);
@@ -134,6 +139,10 @@ public:
 		this->left = std::move(left).getMFSA();
 		this->right = std::move(right.A_R).getMFSA();
 		psi.prepare({this->left.statesCnt - 1, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), right_classes.size() - 1});
+		iota.prepare({this->left.statesCnt - 1});
+		//debug
+		for(auto t : psi.buf)
+			std::cerr << std::get<0>(t) << ' ' << std::get<1>(t) << ' ' << std::get<2>(t) << ' ' << std::get<3>(t) << '\n';
 	}
 	Word operator()(const Word& input) const
 	{
@@ -148,6 +157,7 @@ public:
 			output += psi(currLeftSt, s, *++revPathIt, {s});
 			currLeftSt = left.successor(currLeftSt, s);
 		}
+		output += iota(currLeftSt, {});
 		return output;
 	}
 };

@@ -13,6 +13,7 @@ template<class Ret, class... Args>
 	requires((sizeof...(Args) > 0) && ... && std::is_unsigned_v<Args>)
 class Function
 {
+public: //!!!
 	using element_type = std::tuple<Ret, Args...>;
 	using leftmost_arg_type = std::tuple_element_t<1, element_type>;
 	static constexpr std::size_t argsCnt = sizeof...(Args);
@@ -62,19 +63,11 @@ class Function
 		if constexpr(I > argsCnt) return in;
 		else
 		{
-			//auto proj = static_cast<const std::tuple_element_t<I, element_type>&(*)(const element_type&)>(std::get<I, Ret, Args...>);
 			const std::tuple_element_t<I, element_type>&(*proj)(const element_type&) = std::get<I, Ret, Args...>;
 			return binary_search<I + 1>(std::ranges::equal_range(in, std::get<I>(value), {}, proj), value);
 		}
 	}
 public:
-	/*Function() = default;
-	Function(const std::vector<element_type>& buf, const std::array<std::size_t, argsCnt>& max_values): Function(auto(buf), max_values) {}
-	Function(std::vector<element_type>&& buf, const std::array<std::size_t, argsCnt>& max_values): buf(std::move(buf))
-	{
-		sort<argsCnt>(max_values);
-		prepared = true;
-	}*/
 	void emplace(const Ret& ret, const Args&... args)
 	{
 		buf.emplace_back(ret, args...);
@@ -87,7 +80,7 @@ public:
 	}
 	const Ret& operator()(const Args&... args) const
 	{
-		element_type value({}, args...);
+		element_type value(Ret{}, args...);
 		auto range = binary_search<2>(search_first_arg(std::get<1>(value)), value); // startInd gives us O(1) search on the first argument
 																					// for the rest arguments binary search is used
 		if(std::ranges::size(range) < 1)
