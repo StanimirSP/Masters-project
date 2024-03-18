@@ -13,9 +13,9 @@ template<class Ret, class... Args>
 	requires((sizeof...(Args) > 0) && ... && std::is_unsigned_v<Args>)
 class Function
 {
-public: //!!!
 	using element_type = std::tuple<Ret, Args...>;
-	using leftmost_arg_type = std::tuple_element_t<1, element_type>;
+	using args_tuple = std::tuple<Args...>;
+	using leftmost_arg_type = std::tuple_element_t<0, args_tuple>;
 	static constexpr std::size_t argsCnt = sizeof...(Args);
 	static constexpr std::size_t skip = -2;
 	std::vector<element_type> buf;
@@ -58,13 +58,13 @@ public: //!!!
 		}
 	}
 	template<std::size_t I>
-	auto binary_search(std::ranges::random_access_range auto in, const element_type& value) const
+	auto binary_search(std::ranges::random_access_range auto in, const args_tuple& value) const
 	{
 		if constexpr(I > argsCnt) return in;
 		else
 		{
 			const std::tuple_element_t<I, element_type>&(*proj)(const element_type&) = std::get<I, Ret, Args...>;
-			return binary_search<I + 1>(std::ranges::equal_range(in, std::get<I>(value), {}, proj), value);
+			return binary_search<I + 1>(std::ranges::equal_range(in, std::get<I - 1>(value), {}, proj), value);
 		}
 	}
 public:
@@ -80,8 +80,8 @@ public:
 	}
 	const Ret& operator()(const Args&... args) const
 	{
-		element_type value(Ret{}, args...);
-		auto range = binary_search<2>(search_first_arg(std::get<1>(value)), value); // startInd gives us O(1) search on the first argument
+		args_tuple value(args...);
+		auto range = binary_search<2>(search_first_arg(std::get<0>(value)), value); // startInd gives us O(1) search on the first argument
 																					// for the rest arguments binary search is used
 		if(std::ranges::size(range) < 1)
 			throw std::out_of_range("function not defined");

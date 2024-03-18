@@ -141,8 +141,8 @@ public:
 		psi.prepare({this->left.statesCnt - 1, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), right_classes.size() - 1});
 		iota.prepare({this->left.statesCnt - 1});
 		//debug
-		for(auto t : psi.buf)
-			std::cerr << std::get<0>(t) << ' ' << std::get<1>(t) << ' ' << std::get<2>(t) << ' ' << std::get<3>(t) << '\n';
+		/*for(auto t : psi.buf)
+			std::cerr << std::get<0>(t) << ' ' << std::get<1>(t) << ' ' << std::get<2>(t) << ' ' << std::get<3>(t) << '\n';*/
 	}
 	Word operator()(const Word& input) const
 	{
