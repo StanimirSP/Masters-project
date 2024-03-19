@@ -106,8 +106,8 @@ int main(int argc, char** argv) try
 		const std::string alphabet = "axb";
 		std::vector<ContextualReplacementRule> rules{{"[ab,bbb]"s, "aa"s, "_"s},
 													 {"[b,z]"s, "b"s, "a"s},
-													 //{"[a,_][a,_]*[_,x]|[_,y]"s, "aa"s, "_"s},
-													 {"[a,x]*"s, "aaa*"s, "b|a"s},
+													 {"[a,_][a,_]*[_,x]|[_,y]"s, "aa"s, "_"s},
+													 //{"[a,x]*"s, "aaa*"s, "b|a"s},
 													 {"[_,c]"s, "_"s, "_"s},
 		};
 		/*std::cerr << "test:\n";

@@ -1,9 +1,6 @@
 #ifndef TWOSTEPBIMACHINE_H
 #define TWOSTEPBIMACHINE_H
 
-#include "classicalFSA.h"
-#include "contextualReplacementRule.h"
-#include "function.h"
 #include <vector>
 #include <tuple>
 #include <utility>
@@ -16,6 +13,10 @@
 #include <ranges>
 #include <stdexcept>
 #include <limits>
+#include "classicalFSA.h"
+#include "contextualReplacementRule.h"
+#include "function.h"
+#include "utilities.h"
 
 struct TSBM_LeftAutomaton
 {
@@ -64,8 +65,8 @@ public:
 	auto init_index(std::vector<std::uint32_t>& index_of_left_state) const
 	{
 		using container_type = decltype(containsFinalOf)::value_type;
-		auto cmp = [](const container_type* a, const container_type* b) { return *a < *b; };
-		std::map<const container_type*, std::uint32_t, decltype(cmp)> map(cmp);
+		//auto cmp = [](const container_type* a, const container_type* b) { return *a < *b; };
+		std::map<const container_type*, std::uint32_t, IndirectlyCompare<>> map;
 		index_of_left_state.reserve(containsFinalOf.size());
 		for(std::size_t i = 0; i < containsFinalOf.size(); i++)
 			index_of_left_state.push_back(map.try_emplace(&containsFinalOf[i], map.size()).first->second);
@@ -271,13 +272,15 @@ public:
 	}
 	auto init_index(std::vector<std::uint32_t>& index_of_right_state) const
 	{
-		auto cmp_only_g = [](const State_t* a, const State_t* b) { return a->g < b->g; };
-		std::map<const State_t*, std::uint32_t, decltype(cmp_only_g)> map(cmp_only_g);
+		auto cmp_only_g = [](const State_t& a, const State_t& b) { return a.g < b.g; };
+		std::map<const State_t*, std::uint32_t, IndirectlyCompare<decltype(cmp_only_g)>> map(cmp_only_g);
 		index_of_right_state.resize(A_R.stateNames.size());
 		for(const auto& [st, st_name] : A_R.stateNames)
 			index_of_right_state[st_name] = map.try_emplace(&st, map.size()).first->second;
 		return map;
 	}
+
+	// used by TwostepBimachine
 	std::vector<Word>& calculate_mu(std::vector<std::size_t>& buf_mu,
 									std::vector<Word>& buf_outputs,
 									State q,
@@ -300,6 +303,8 @@ public:
 		}
 		return buf_outputs;
 	}
+
+	// used by BimachineWithFinalOutput
 	std::pair<State, Word> calculate_g_of_mu(State q, Symbol letter, const TSBM_RightAutomaton::State_t& right_state) const
 	{
 		std::size_t mu = std::numeric_limits<std::size_t>::max();
@@ -362,12 +367,12 @@ public:
 		}
 		return Constants::InvalidRule;
 	}
-	TwostepBimachine(const std::vector<ContextualReplacementRuleRepresentation>& batch_representation): TwostepBimachine(auto(batch_representation)) {}
-	TwostepBimachine(std::vector<ContextualReplacementRuleRepresentation>&& batch_representation)
+	TwostepBimachine(const std::vector<ContextualReplacementRuleRepresentation>& batch): TwostepBimachine(auto(batch)) {}
+	TwostepBimachine(std::vector<ContextualReplacementRuleRepresentation>&& batch)
 	{
-		TSBM_LeftAutomaton left{std::move(batch_representation)};
+		TSBM_LeftAutomaton left{std::move(batch)};
 		auto left_classes = left.init_index(index_of_left_state);
-		TSBM_RightAutomaton right{std::move(batch_representation)};
+		TSBM_RightAutomaton right{std::move(batch)};
 		auto right_classes = right.init_index(index_of_right_state);
 
 		// defined outside of the loops to avoid reallocations
@@ -394,10 +399,10 @@ public:
 			{
 				if(State init = nu(right, *rules_left_ctx_ok_ptr, *right_state_ptr); init != Constants::InvalidState)
 					tau.emplace(init, left_ind, right_ind);
-				if(std::uint32_t rule = minJ(right, batch_representation, *rules_left_ctx_ok_ptr, *right_state_ptr);
-					rule != Constants::InvalidRule && !batch_representation[rule].output_for_epsilon->empty()
+				if(std::uint32_t rule = minJ(right, batch, *rules_left_ctx_ok_ptr, *right_state_ptr);
+					rule != Constants::InvalidRule && !batch[rule].output_for_epsilon->empty()
 				)
-					psi_tau.emplace(*batch_representation[rule].output_for_epsilon, left_ind, right_ind);
+					psi_tau.emplace(*batch[rule].output_for_epsilon, left_ind, right_ind);
 			}
 		}
 
@@ -412,26 +417,17 @@ public:
 		//debug
 		/*for(auto t : psi_tau.buf)
 			std::cerr << std::get<0>(t) << ' ' << std::get<1>(t) << ' ' << std::get<2>(t) << '\n';*/
-
-		//test
-		/*psi_delta = Function<Word, State, USymbol, State>({{"ivan",0,0,0}, {"pataran",1,1,1}, {"bad",2,2,2}, {"bad2",2,2,2}}, {10,10,10});
-		std::cerr << psi_delta(0, 0, 0) << std::endl;
-		std::cerr << psi_delta(1, 1, 1) << std::endl;
-		std::cerr << psi_delta(3, 3, 3, {"default"}) << std::endl;
-		std::cerr << "====\n";
-		std::cerr << psi_delta(300, 'a', 300) << std::endl;
-		std::cerr << psi_delta(2, 2, 2) << std::endl;*/
 	}
 	Word operator()(const Word& input) const
 	{
-		std::vector<State> left_path = left.findPath(input), right_path = right.findPath(std::ranges::reverse_view(input));
-		std::ranges::transform(left_path, left_path.begin(), [this](State l) { return index_of_left_state[l]; });
-		std::ranges::transform(right_path, right_path.begin(), [this](State r) { return index_of_right_state[r]; });
+		std::vector<State> left_path = left.findPath(input), right_path = right.findPath(std::ranges::views::reverse(input));
+		auto left_path_range = left_path | std::ranges::views::transform([this](State l) { return index_of_left_state[l]; });
+		auto left_path_it = left_path_range.begin();
+		auto right_path_rev_range = right_path | std::ranges::views::reverse | std::ranges::views::transform([this](State r) { return index_of_right_state[r]; });
+		auto right_path_rev_it = right_path_rev_range.begin();
 
 		Word output;
 		State curr/* = q_err*/;
-		auto left_path_it = left_path.begin();
-		auto right_path_rev_it = right_path.rbegin();
 		//std::cerr << "path:\n" << q_err << '\n';
 		curr = tau(*left_path_it, *right_path_rev_it, q_err);
 		output += psi_tau(*left_path_it++, *right_path_rev_it++, {});

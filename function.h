@@ -13,6 +13,7 @@ template<class Ret, class... Args>
 	requires((sizeof...(Args) > 0) && ... && std::is_unsigned_v<Args>)
 class Function
 {
+public: //!!!
 	using element_type = std::tuple<Ret, Args...>;
 	using args_tuple = std::tuple<Args...>;
 	using leftmost_arg_type = std::tuple_element_t<0, args_tuple>;
@@ -73,9 +74,12 @@ public:
 		buf.emplace_back(ret, args...);
 		prepared = false;
 	}
-	void prepare(const std::array<std::size_t, argsCnt>& max_values)
+	void prepare(const std::array<std::size_t, argsCnt>& max_values, bool erase_duplicates = false)
 	{
 		sort<argsCnt>(max_values);
+		if(erase_duplicates)
+			buf.erase(std::ranges::unique(buf).begin(), buf.end());
+		sort<1>(max_values[0]);
 		prepared = true;
 	}
 	const Ret& operator()(const Args&... args) const
