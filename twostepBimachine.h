@@ -52,7 +52,7 @@ public:
 		DFA.final.clear(); // no longer needed
 
 		//debug:
-		DFA.print(std::cerr) << '\n';
+		/*DFA.print(std::cerr) << '\n';
 		std::cerr << "containsFinalOf[state]=rules:\n";
 		for(std::size_t i = 0; i < containsFinalOf.size(); i++)
 		{
@@ -60,7 +60,7 @@ public:
 			for(std::uint32_t r : containsFinalOf[i])
 				std::cerr << r << ' ';
 			std::cerr << "}\n";
-		}
+		}*/
 	}
 	auto init_index(std::vector<std::uint32_t>& index_of_left_state) const
 	{
@@ -253,7 +253,7 @@ public:
 		A_T.reverse(); // restore the original direction
 
 		// debug:
-		A_rho.print(std::cerr << "\nA_rho:\n") << '\n';
+		/*A_rho.print(std::cerr << "\nA_rho:\n") << '\n';
 		A_T.print(std::cerr << "\nA_T:\n") << '\n';
 		A_R.print(std::cerr << "\nA_R:\n") << '\n';
 		std::cerr << "final_center_of_type (type, state): ";
@@ -268,7 +268,7 @@ public:
 		std::cerr << "\ntype_of_final_right_rev: ";
 		for(auto [st, type] : type_of_final_right_rev)
 			std::cerr << "type(" << st << ")=" << type << " ";
-		std::cerr << "\n";
+		std::cerr << "\n";*/
 	}
 	auto init_index(std::vector<std::uint32_t>& index_of_right_state) const
 	{

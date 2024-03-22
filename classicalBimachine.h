@@ -175,7 +175,11 @@ public:
 			output += psi(index_of_left_state[curr_left_st], s, *++right_path_rev_it, {s});
 			curr_left_st = left.successor(curr_left_st, s);
 		}
-		output += iota[this->index_of_leftctx_state[curr_left_st]];
+		try
+		{
+			output += iota.at(this->index_of_leftctx_state[curr_left_st]);
+		}
+		catch(const std::out_of_range&) {} // no final output for this state
 		return output;
 	}
 };

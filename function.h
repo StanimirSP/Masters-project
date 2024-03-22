@@ -8,12 +8,13 @@
 #include <type_traits>
 #include <array>
 #include <algorithm>
+#include <string>
 
 template<class Ret, class... Args>
 	requires((sizeof...(Args) > 0) && ... && std::is_unsigned_v<Args>)
 class Function
 {
-public: //!!!
+//public: //!!!
 	using element_type = std::tuple<Ret, Args...>;
 	using args_tuple = std::tuple<Args...>;
 	using leftmost_arg_type = std::tuple_element_t<0, args_tuple>;
@@ -26,7 +27,8 @@ public: //!!!
 	std::span<const element_type> search_first_arg(const leftmost_arg_type& arg) const
 	{
 		if(arg + 1 >= startInd.size())
-			throw std::runtime_error("bad call to Function::operator()(const leftmost_arg_type& arg)");
+			throw std::runtime_error("bad call to Function::search_first_arg(const leftmost_arg_type& arg): [arg == " +
+				std::to_string(arg) + "; startInd.size() == " + std::to_string(startInd.size()) + "]");
 		return {buf.begin() + startInd[arg], buf.begin() + startInd[arg + 1]};
 	}
 	template<std::size_t I>
@@ -68,6 +70,21 @@ public: //!!!
 			return binary_search<I + 1>(std::ranges::equal_range(in, std::get<I - 1>(value), {}, proj), value);
 		}
 	}
+
+	// requires buf to be sorted in ascending order by the first argument
+	// otherwise *this is left in invalid state
+	void restore_index() // this is not correct!
+	{
+		startInd.clear();
+		State curr = Constants::InvalidState;
+		for(std::size_t i = 0; i < buf.size(); i++)
+			if(const leftmost_arg_type& value = std::get<1>(buf[i]); curr != value)
+			{
+				startInd.push_back(i);
+				curr = value;
+			}
+		startInd.push_back(buf.size());
+	}
 public:
 	void emplace(const Ret& ret, const Args&... args)
 	{
@@ -78,8 +95,11 @@ public:
 	{
 		sort<argsCnt>(max_values);
 		if(erase_duplicates)
+		{
 			buf.erase(std::ranges::unique(buf).begin(), buf.end());
-		sort<1>(max_values[0]);
+			sort<1>(max_values[0]);
+			//restore_index();
+		}
 		prepared = true;
 	}
 	const Ret& operator()(const Args&... args) const

@@ -125,10 +125,10 @@ public:
 	State successor(State from, Symbol with) const
 	{
 		if(from >= statesCnt)
-			throw std::out_of_range("cannot get successor: state 'from' is out of range");
+			throw std::invalid_argument("cannot get successor: state 'from' is out of range");
 		auto letterIndexIterator = alphabetOrder.find(with);
 		if(letterIndexIterator == alphabetOrder.end())
-			throw std::runtime_error("cannot get successor: '" + std::string{with} + "' is not in the alphabet");
+			throw std::invalid_argument("cannot get successor: '" + std::string{with} + "' is not in the alphabet");
 		return (transitions(from).begin() + letterIndexIterator->second)->To();
 	}
 	// *this must satisfy the precondition for calling 'successor'
