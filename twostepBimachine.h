@@ -205,7 +205,7 @@ public:
 		A_T = construct_A_T(batch);
 		A_rho.transitions.sort();
 		A_T.transitions.sortByTo();
-		sortByLabel(A_T.transitions); // needed for calculate_mu
+		//sortByLabel(A_T.transitions); // needed for calculate_mu // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		A_T.transitions.sort();
 
 		A_R.stateNames.emplace(computeInitial_A_R(A_rho), 0);
@@ -320,6 +320,20 @@ public:
 		}
 		catch(const std::out_of_range&) {} // if tr.To() is not in Rng(g), do nothing
 		return {right_state.g[mu], std::move(output)};
+		/*try
+		{
+			return {right_state.g.at(mu), std::move(output)};
+		}
+		catch(...)
+		{
+			std::cerr << "q = " << q << "; " << "letter = " << letter << '\n';
+			std::cerr << "right_state.g_inv: \n";
+			for(auto [st, ind] : right_state.g_inv)
+				std::cerr << st << ", " << ind << '\n';
+			for(const auto& tr : A_T.transitions.buffer)
+				std::cerr << tr << '\n';
+			std::terminate();
+		}*/
 	}
 	const State_t& successor(const State_t& from, Symbol with) const
 	{

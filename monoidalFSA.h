@@ -169,6 +169,104 @@ protected:
 		for(Symbol s : rhs.alphabet)
 			alphabetUnion(s);
 	}
+
+	// *this must be deterministic and total, otherwise the behavior is undefined
+	// color_of[i] == j <=> state i belongs to equivalence class j
+	MonoidalFSA& coloredPseudoMinimize(std::size_t colors_cnt, std::vector<State>& color_of, const std::vector<LabelType>& pseudoAlphabet)
+	{
+		sortByLabel(transitions.reverse());
+		transitions.sort();
+
+		auto cmpLabel = [](const Transition<LabelType>& a, const Transition<LabelType>& b) { return a.Label() < b.Label(); };
+		struct EquivalenceClass
+		{
+			std::unordered_set<State> members; // which states are in the current class
+			std::vector<State> plus; // subset of members
+			std::vector<bool> inQueue; // inQueue[i] <=> (members, pseudoAlphabet[i]) in q
+			EquivalenceClass(std::size_t alphabet_size): inQueue(alphabet_size) {}
+		};
+		// initialize equivance classes
+		std::vector<EquivalenceClass> eqClassBuffer(colors_cnt, {pseudoAlphabet.size()});
+		for(State st = 0; st < statesCnt; st++)
+			eqClassBuffer[color_of[st]].members.insert(st);
+
+		std::queue<std::pair<State, State>> q; // queue of pairs ("equvance class index", "letter index")
+		// initialize queue
+		for(std::size_t letterInd = 0; letterInd < pseudoAlphabet.size(); letterInd++)
+			for(std::size_t classInd = 0; classInd < eqClassBuffer.size(); classInd++)
+			{
+				q.emplace(classInd, letterInd);
+				eqClassBuffer[classInd].inQueue[letterInd] = true;
+			}
+
+		std::queue<State> splitQueue; // queue of class indices which may split; it is defined outside the outer loop to avoid reallocations
+		while(!q.empty())
+		{
+			auto [classIndex, letterInd] = q.front();
+			q.pop();
+			eqClassBuffer[classIndex].inQueue[letterInd] = false;
+			for(State s1 : eqClassBuffer[classIndex].members)
+				for(const auto& tr : std::ranges::equal_range(transitions(s1), Transition{s1, pseudoAlphabet[letterInd], Constants::InvalidState}, cmpLabel))
+				{ // (s1, a, tr.To()) is in reversed transitions
+					State targetClassInd = color_of[tr.To()];
+					EquivalenceClass& targetClass = eqClassBuffer[targetClassInd];
+					if(targetClass.plus.empty())
+						splitQueue.push(targetClassInd);
+					targetClass.plus.push_back(tr.To());
+				}
+
+			while(!splitQueue.empty())
+			{
+				State toSplitInd = splitQueue.front();
+				splitQueue.pop();
+				if(eqClassBuffer[toSplitInd].members.size() != eqClassBuffer[toSplitInd].plus.size()) // toSplit indeed splits
+				{
+					eqClassBuffer.emplace_back(pseudoAlphabet.size());
+					State newClassInd = eqClassBuffer.size() - 1;
+					EquivalenceClass& newClass = eqClassBuffer[newClassInd];
+					for(State toMove : eqClassBuffer[toSplitInd].plus)
+					{
+						eqClassBuffer[toSplitInd].members.erase(toMove);
+						newClass.members.insert(toMove);
+						color_of[toMove] = newClassInd;
+					}
+					for(std::size_t letterInd = 0; letterInd < pseudoAlphabet.size(); letterInd++)
+						if(eqClassBuffer[toSplitInd].inQueue[letterInd])
+						{
+							q.emplace(newClassInd, letterInd);
+							newClass.inQueue[letterInd] = true;
+						}
+						else
+						{
+							State smallerClassInd = eqClassBuffer[toSplitInd].members.size() < newClass.members.size() ? toSplitInd : newClassInd;
+							q.emplace(smallerClassInd, letterInd);
+							eqClassBuffer[smallerClassInd].inQueue[letterInd] = true;
+						}
+				}
+				eqClassBuffer[toSplitInd].plus.clear();
+			}
+			// splitQueue is now empty and prepared for the next iteration
+		}
+
+		statesCnt = eqClassBuffer.size();
+		initial = {color_of[*initial.begin()]}; // new initial state is the class of the old initial state
+		{
+			std::unordered_set<State> newFinal;
+			for(State fin : final)
+				newFinal.insert(color_of[fin]);
+			final = std::move(newFinal);
+		}
+		TransitionList<LabelType> newTransitions{&statesCnt};
+		newTransitions.buffer.reserve(transitions.buffer.size());
+		for(auto& tr : transitions.buffer) // transitions are still reversed!
+			newTransitions.buffer.emplace_back(color_of[tr.To()], std::move(tr.Label()), color_of[tr.From()]);
+		sortByLabel(newTransitions);
+		newTransitions.sort();
+		newTransitions.buffer.erase(std::ranges::unique(newTransitions.buffer).begin(), newTransitions.buffer.end());
+		newTransitions.isSorted = false; // because newTransitions.startInd is now invalid
+		transitions = std::move(newTransitions);
+		return *this;
+	}
 public:
 	MonoidalFSA& removeEpsilon()
 	{
@@ -491,6 +589,19 @@ public:
 		std::vector<LabelType> pseudoAlphabet = findPseudoAlphabet();
 		transitions.sort();
 		complete(pseudoAlphabet);
+
+		std::vector<State> color_of;
+		color_of.reserve(statesCnt);
+		for(State st = 0; st < statesCnt; st++)
+			color_of.push_back(!final.contains(st));
+		return coloredPseudoMinimize(final.size() == statesCnt ? 1 : 2, color_of, pseudoAlphabet).trim();
+
+		/*pseudoDeterm();
+		if(final.empty()) return *this;
+		sortByLabel(transitions);
+		std::vector<LabelType> pseudoAlphabet = findPseudoAlphabet();
+		transitions.sort();
+		complete(pseudoAlphabet);
 		sortByLabel(transitions.reverse());
 		transitions.sort();
 
@@ -555,6 +666,8 @@ public:
 				splitQueue.pop();
 				if(eqClassBuffer[toSplitInd].members.size() != eqClassBuffer[toSplitInd].plus.size()) // toSplit indeed splits
 				{
+					if(eqClassBuffer[toSplitInd].members.size() < eqClassBuffer[toSplitInd].plus.size())
+						throw std::logic_error("should never happen");
 					eqClassBuffer.emplace_back(pseudoAlphabet.size());
 					State newClassInd = eqClassBuffer.size() - 1;
 					EquivalenceClass& newClass = eqClassBuffer[newClassInd];
@@ -599,7 +712,7 @@ public:
 		newTransitions.buffer.erase(std::ranges::unique(newTransitions.buffer).begin(), newTransitions.buffer.end());
 		newTransitions.isSorted = false; // because newTransitions.startInd is now invalid
 		transitions = std::move(newTransitions);
-		return trim();
+		return trim();*/
 	}
 
 	MonoidalFSA() = default;

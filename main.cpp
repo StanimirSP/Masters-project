@@ -94,14 +94,20 @@ int main(int argc, char** argv) try
 		std::cout << ca.intersect(ca2) << '\n';
 	}*/
 	/*{
-		RegularExpression<SymbolOrEpsilon> r("(a|b)ba*b");
+		//RegularExpression<SymbolOrEpsilon> r("sses");
+		RegularExpression<WordPair> r("[aa,X]");
 		//RegularExpression<SymbolOrEpsilon> r("aa*");
 
-		ClassicalFSA T = regexToMFSA(std::move(r), "ab");
+		//ClassicalFSA T = regexToMFSA(std::move(r), "se");
 		//T.convertToDFSA();
+		std::unordered_set<Word> outputsForEpsilon;
+		LetterTransducer T2(Transducer(regexToMFSA(std::move(r), PorterStemmer::alphabet)).expand());
+		auto T = T2.realTime(&outputsForEpsilon);
 		T.print(std::cerr) << '\n';
-		T.pseudoMinimize().print(std::cerr) << '\n';
-		T.toSimple().print(std::cerr) << '\n';
+		T.pseudoMinimize();//.toSimple();
+		T.print(std::cerr) << '\n';
+		//T.pseudoMinimize().print(std::cerr) << '\n';
+		//T.toSimple().print(std::cerr) << '\n';
 
 	}*/
 	/*{
@@ -145,12 +151,15 @@ int main(int argc, char** argv) try
 		std::cout << bmfo("abaaabaaaabbaaaaaa") << std::endl;
 
 		std::cout << "=========================\n";
-	}
-	{
+	}*/
+	/*{
 		std::vector<ContextualReplacementRule> rules = PorterStemmer::steps[0];
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		for(std::size_t i = 0; i < rules.size(); i++)
+		{
 			batch.emplace_back(rules[i], PorterStemmer::alphabet);
+			batch[i].center_rt.print(std::cerr);
+		}
 
 		TwostepBimachine tsbm(batch);
 		std::cout << tsbm(" caresses ") << std::endl;
@@ -158,19 +167,21 @@ int main(int argc, char** argv) try
 		std::cout << tsbm(" ties ") << std::endl;
 		std::cout << tsbm(" caress ") << std::endl;
 		std::cout << tsbm(" cats ") << std::endl;
+		std::cout << tsbm(" abatements ") << std::endl;
 
 		std::cout << "-----------------------\n";
 
 		BimachineWithFinalOutput bmfo(batch);
 		std::cout << bmfo(" caresses ") << std::endl;
-		std::cout << bmfo(" agreed ") << std::endl;
+		std::cout << bmfo(" ponies ") << std::endl;
 		std::cout << bmfo(" ties ") << std::endl;
 		std::cout << bmfo(" caress ") << std::endl;
 		std::cout << bmfo(" cats ") << std::endl;
+		std::cout << bmfo(" abatements ") << std::endl;
 
 		std::cout << "=========================\n";
-	}
-	{
+	}*/
+	/*{
 		std::vector<ContextualReplacementRule> rules = PorterStemmer::steps[1];
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		for(std::size_t i = 0; i < rules.size(); i++)
@@ -208,7 +219,8 @@ int main(int argc, char** argv) try
 	}*/
 
 	{
-		std::vector<BimachineWithFinalOutput> tsbm;
+		std::vector<BimachineWithFinalOutput> bm;
+		//std::vector<TwostepBimachine> bm;
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		{
 			auto start = std::chrono::steady_clock::now();
@@ -216,7 +228,7 @@ int main(int argc, char** argv) try
 			{
 				for(std::size_t j = 0; j < PorterStemmer::steps[i].size(); j++)
 					batch.emplace_back(PorterStemmer::steps[i][j], PorterStemmer::alphabet);
-				tsbm.emplace_back(std::move(batch));
+				bm.emplace_back(std::move(batch));
 				batch.clear();
 			}
 			auto end = std::chrono::steady_clock::now();
@@ -229,12 +241,16 @@ int main(int argc, char** argv) try
 			auto end = std::chrono::steady_clock::now();
 			std::cerr << "elapsed time for reading: " << std::fixed << std::chrono::duration<double>(end - start).count() << " s\n";
 		}
-
-		//while(std::getline(std::cin, input))
 		{
 			auto start = std::chrono::steady_clock::now();
 			for(std::size_t i = 0; i < PorterStemmer::steps_cnt; i++)
-				input = tsbm[i](input);
+			{
+				input = bm[i](input);
+				// std::cerr << "{ ";
+				// for(int c : input)
+				// 	std::cerr << std::hex << c << ' ';
+				// std::cerr << "}\n";
+			}
 			auto end = std::chrono::steady_clock::now();
 			std::cerr << "elapsed time for replacing: " << std::fixed << std::chrono::duration<double>(end - start).count() << " s\n";
 		}

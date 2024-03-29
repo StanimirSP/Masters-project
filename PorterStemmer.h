@@ -28,38 +28,37 @@ namespace PorterStemmer
 	inline const std::string m_gt_0 = "((" + C + VC + '|' + V_starting_non_y + C + ')' + VC + '*' + opt_V + ')';
 	inline const std::string m_gt_1 = "((" + C + VC + '|' + V_starting_non_y + C + ')' + VC + VC + '*' + opt_V + ')';
 	inline const std::string m_eq_1 = '(' + whitespace + '(' + C + VC + '|' + V_starting_non_y + C + ')' + opt_V + ')';
-	//inline const std::string V_starting_y = 'y' + always_vowel + '*';
 	inline const std::string rctx = "\x02";
 
 	using namespace std::string_literals;
-	inline constexpr std::size_t steps_cnt = 10;
-	inline const std::vector<ContextualReplacementRule> steps[steps_cnt] = {
-		{ // 0
+	inline const std::vector<ContextualReplacementRule> steps[] = {
+		/*{ // 0
 			{"[_,\x02]"s, letter + letter + letter, whitespace}, // only allow words of lenght > 2 to be modified
-		},
+		},*/
 		{ // 1a
-			{"[sses,ss]"s, "_"s, rctx},						// SSES -> SS
-			{"[ies,i]"s, "_"s, rctx},						// IES  -> I
-			{"[ss,ss]"s, "_"s, rctx},						// SS   -> SS
-			{"[s,_]"s, "_"s/*letter + letter*/, rctx},		// S    ->
+			{"[sses,ss\x02]"s, "_"s, whitespace},						// SSES -> SS
+			{"[ies,i\x02]"s, "_"s, whitespace},							// IES  -> I
+			{"[ss,ss\x02]"s, /*"_"s*/ letter, whitespace},				// SS   -> SS
+			{"[s,\x02]"s, /*"_"s*/ letter + letter, whitespace},		// S    ->
+			{"[_,\x02]"s, letter + letter + "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|t|u|v|w|x|y|z)", whitespace},		// only allow words of lenght > 2 to be modified
 		},
 		{ // 1b -- '\x01' is used as a marker for whether step 1b' should take place
-			{"[eed,ee]"s, m_gt_0, rctx},							// (m>0) EED -> EE
-			{"[eed,eed]"s, "_"s, rctx}, 							// suppresses the rules below if the word ends in 'eed' but the condition (m>0) is not satisfied
-			{"[ed,\x01]"s, /*whitespace +*/ contains_vowel, rctx},		// (*v*) ED  ->
-			{"[ing,\x01]"s, /*whitespace +*/ contains_vowel, rctx},		// (*v*) ING ->
+			{"[eed,ee]"s, m_gt_0, rctx},					// (m>0) EED -> EE
+			{"[eed,eed]"s, "_"s, rctx}, 					// suppresses the rules below if the word ends in 'eed' but the condition (m>0) is not satisfied
+			{"[ed,\x01]"s, contains_vowel, rctx},			// (*v*) ED  ->
+			{"[ing,\x01]"s, contains_vowel, rctx},			// (*v*) ING ->
 		},
 		{ // 1b'
-			{"[at\x01,ate]"s, "_"s, rctx},																					// AT -> ATE
-			{"[bl\x01,ble]"s, "_"s, rctx},																					// BL -> BLE
-			{"[iz\x01,ize]"s, "_"s, rctx},																					// IZ -> IZE
+			{"[at\x01,ate]"s, "_"s, rctx},																// AT -> ATE
+			{"[bl\x01,ble]"s, "_"s, rctx},																// BL -> BLE
+			{"[iz\x01,ize]"s, "_"s, rctx},																// IZ -> IZE
 			{"([bb,b]|[cc,c]|[dd,d]|[ff,f]|[gg,g]|[hh,h]|[jj,j]|[kk,k]|[mm,m]|[nn,n]"
-			 "|[pp,p]|[qq,q]|[rr,r]|[tt,t]|[vv,v]|[ww,w]|[xx,x])[\x01,_]"s, "_"s, rctx},									// (*d and not (*L or *S or *Z)) -> single letter
-			{"[\x01,e]"s, whitespace + C + vowel_or_y + consonant_not_wxy, rctx},	// (m=1 and *o) -> E
-			{"[\x01,_]"s, "_"s, rctx},																						// if none of the above can be applied, deletes marker '\x01'
+			 "|[pp,p]|[qq,q]|[rr,r]|[tt,t]|[vv,v]|[ww,w]|[xx,x])[\x01,_]"s, "_"s, rctx},				// (*d and not (*L or *S or *Z)) -> single letter
+			{"[\x01,e]"s, whitespace + C + vowel_or_y + consonant_not_wxy, rctx},						// (m=1 and *o) -> E
+			{"[\x01,_]"s, "_"s, rctx},																	// if none of the above can be applied, deletes marker '\x01'
 		},
 		{ // 1c
-			{"[y,i]"s, /*letter + vowel_or_y + '|' + contains_vowel + letter*/contains_vowel, rctx},			// (*v*) Y -> I
+			{"[y,i]"s, /*letter + vowel_or_y + '|' + contains_vowel + letter*/ contains_vowel, rctx},	// (*v*) Y -> I
 		},
 		{ // 2
 			{"[ational,ate]"s, m_gt_0, rctx},	// (m>0) ATIONAL ->  ATE
@@ -170,9 +169,10 @@ namespace PorterStemmer
 		{ // 5b
 			{"[l\x02,_]"s, "((" + C + VC + '|' + V_starting_non_y + C + ')' + VC + '*' + V + opt_C + "l)", whitespace},		// (m > 1 and *d and *L) -> single letter;
 																															// also deletes the marker '\x02'
-			{"[\x02,_]"s, "_"s, whitespace}, // deletes the marker '\x02'
+			{"[\x02,_]"s, "_"s, whitespace}, 																				// deletes the marker '\x02'
 		},
 	};
+	inline constexpr std::size_t steps_cnt = sizeof(steps) / sizeof(*steps);
 }
 
 #endif

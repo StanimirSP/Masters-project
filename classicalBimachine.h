@@ -3,19 +3,50 @@
 
 #include <vector>
 #include <cstdint>
-#include <queue>
+#include <utility>
+#include <map>
+#include <unordered_map>
 #include "twostepBimachine.h"
 #include "function.h"
 #include "classicalFSA.h"
 #include "monoidalFSA.h"
 #include "utilities.h"
 
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/functional/hash.hpp>
+
+namespace std
+{
+	/*template<>
+	struct hash<pair<USymbol, State>>
+	{
+		std::size_t operator()(const pair<USymbol, State>& p) const
+		{
+			auto seed = std::hash<USymbol>{}(p.first);
+			return seed ^= std::hash<State>{}(p.second) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		}
+	};*/
+	/*template<>
+	struct hash<pair<USymbol, State>>
+	{
+		std::size_t operator()(const pair<USymbol, State>& p) const
+		{
+			auto seed = std::hash<USymbol>{}(p.first);
+			boost::hash_combine(seed, std::hash<State>{}(p.second));
+			return seed;
+		}
+	};*/
+}
+
 class BimachineWithFinalOutput
 {
 	ClassicalFSA left, right;
 	std::vector<std::uint32_t> index_of_left_state, index_of_right_state, index_of_leftctx_state;
 	Function<Word, State, USymbol, State> psi;
-	std::vector<Word> iota;
+	//std::vector<std::unordered_map<std::pair<USymbol, State>, Word>> psi;
+	//std::vector<boost::unordered_flat_map<std::pair<USymbol, State>, Word>> psi;
+	//boost::unordered_flat_map<std::tuple<State, USymbol, State>, Word> psi;
+	std::unordered_map<std::uint32_t, Word> iota;
 
 	struct LeftState
 	{
@@ -87,7 +118,13 @@ class BimachineWithFinalOutput
 			if(st != Constants::InvalidState)
 				next.phi.emplace(right_ind, st);
 			if(!(output.size() == 1 && output[0] == letter))
+			{
 				psi.emplace(output, index_of_left_state[from], letter, right_ind);
+				/*if(index_of_left_state[from] >= psi.size())
+					psi.resize(index_of_left_state[from] + 1);
+				psi[index_of_left_state[from]][{letter, right_ind}] = output;*/
+				//psi[{index_of_left_state[from], letter, right_ind}] = output;
+			}
 		}
 		return next;
 	}
@@ -101,6 +138,7 @@ public:
 		auto leftctx_classes = leftctx.init_index(index_of_leftctx_state);
 		TSBM_RightAutomaton right{std::move(batch)};
 		auto right_classes = right.init_index(index_of_right_state);
+		sortByLabelDomain(right.A_T.transitions); // needed for calculate_mu
 		right.A_T.transitions.sort();
 
 		Internal::FSA<LeftState> left;
@@ -108,8 +146,6 @@ public:
 		left.states.push_back(&left.stateNames.begin()->first);
 		left.initial.insert(0);
 		left.transitions.startInd.push_back(0);
-		std::queue<State> q;
-		q.push(0);
 
 		LeftState nextLeftStates[std::numeric_limits<USymbol>::max() + 1]; // not good if USymbol is later changed to a larger type
 																		   // then this may cause stack overflow
@@ -119,10 +155,8 @@ public:
 			return a.phi < b.phi;
 			};
 		std::map<const LeftState*, std::uint32_t, IndirectlyCompare<decltype(cmp_classes_lctx_then_phi)>> map_left(cmp_classes_lctx_then_phi);
-		for(State step = 0; !q.empty(); step++)
+		for(State curr_st_name = 0; curr_st_name < left.states.size(); curr_st_name++)
 		{
-			State curr_st_name = q.front();
-			q.pop();
 			const LeftState &curr_st = *left.states[curr_st_name];
 			index_of_left_state.push_back(map_left.try_emplace(&curr_st, map_left.size()).first->second);
 			this->index_of_leftctx_state.push_back(index_of_leftctx_state[curr_st.lctx]);
@@ -131,22 +165,15 @@ public:
 			{
 				auto [it, inserted] = left.stateNames.try_emplace(next_left(curr_st_name, letter, left, leftctx, right, right_classes, batch), left.stateNames.size());
 				if(inserted)
-				{
 					left.states.push_back(&it->first);
-					q.push(it->second);
-				}
-				left.transitions.buffer.emplace_back(step, letter, it->second);
+				left.transitions.buffer.emplace_back(curr_st_name, letter, it->second);
 			}
 			left.transitions.startInd.push_back(left.transitions.buffer.size());
 
-			std::uint32_t rule = TwostepBimachine::minJ(right, batch, leftctx.containsFinalOf[left.states[curr_st_name]->lctx], *right.A_R.states[*right.A_R.initial.begin()]);
-			if(rule != Constants::InvalidRule)
-			{
-				std::uint32_t leftctx_ind = this->index_of_leftctx_state[curr_st_name];
-				if(iota.size() <= leftctx_ind)
-					iota.resize(leftctx_ind + 1);
-				iota[leftctx_ind] = *batch[rule].output_for_epsilon;
-			}
+			if(std::uint32_t rule = TwostepBimachine::minJ(right, batch, leftctx.containsFinalOf[left.states[curr_st_name]->lctx], *right.A_R.states[*right.A_R.initial.begin()]);
+				rule != Constants::InvalidRule && !batch[rule].output_for_epsilon->empty()
+			)
+				iota[this->index_of_leftctx_state[curr_st_name]] = *batch[rule].output_for_epsilon;
 		}
 		left.transitions.isSorted = true;
 		left.alphabet = std::move(leftctx.DFA.alphabet);
@@ -172,6 +199,16 @@ public:
 		State curr_left_st = *left.initial.begin();
 		for(auto right_path_rev_it = right_path_rev_range.begin(); Symbol s : input)
 		{
+			/*++right_path_rev_it;
+			try
+			{
+				//output += psi.at(index_of_left_state[curr_left_st]).at({s, *right_path_rev_it});
+				output += psi.at({index_of_left_state[curr_left_st], s, *right_path_rev_it});
+			}
+			catch(const std::out_of_range&)
+			{
+				output += s;
+			}*/
 			output += psi(index_of_left_state[curr_left_st], s, *++right_path_rev_it, {s});
 			curr_left_st = left.successor(curr_left_st, s);
 		}

@@ -14,7 +14,6 @@ template<class Ret, class... Args>
 	requires((sizeof...(Args) > 0) && ... && std::is_unsigned_v<Args>)
 class Function
 {
-//public: //!!!
 	using element_type = std::tuple<Ret, Args...>;
 	using args_tuple = std::tuple<Args...>;
 	using leftmost_arg_type = std::tuple_element_t<0, args_tuple>;
@@ -71,8 +70,6 @@ class Function
 		}
 	}
 
-	// requires buf to be sorted in ascending order by the first argument
-	// otherwise *this is left in invalid state
 	void restore_index() // this is not correct!
 	{
 		startInd.clear();
