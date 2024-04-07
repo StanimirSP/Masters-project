@@ -9,16 +9,20 @@
 #include <array>
 #include <algorithm>
 #include <string>
+#include <iostream>
+#include <functional>
 
 template<class Ret, class... Args>
 	requires((sizeof...(Args) > 0) && ... && std::is_unsigned_v<Args>)
 class Function
 {
+public:
 	using element_type = std::tuple<Ret, Args...>;
 	using args_tuple = std::tuple<Args...>;
+	static constexpr std::size_t skip = -2;
+private:
 	using leftmost_arg_type = std::tuple_element_t<0, args_tuple>;
 	static constexpr std::size_t argsCnt = sizeof...(Args);
-	static constexpr std::size_t skip = -2;
 	std::vector<element_type> buf;
 	std::vector<std::size_t> startInd;
 	bool prepared = false;
@@ -70,7 +74,7 @@ class Function
 		}
 	}
 
-	void restore_index() // this is not correct!
+	/*void restore_index() // this is not correct!
 	{
 		startInd.clear();
 		State curr = Constants::InvalidState;
@@ -81,11 +85,17 @@ class Function
 				curr = value;
 			}
 		startInd.push_back(buf.size());
+	}*/
+	static std::ostream& print_element(std::ostream& os, const Ret& ret, const Args&... args)
+	{
+		((os << args << ' '), ...);
+		return os << "-> " << ret;
 	}
 public:
-	void emplace(const Ret& ret, const Args&... args)
+	template<class... RetArgs>
+	void emplace(RetArgs&&... ret_args)
 	{
-		buf.emplace_back(ret, args...);
+		buf.emplace_back(std::forward<RetArgs>(ret_args)...);
 		prepared = false;
 	}
 	void prepare(const std::array<std::size_t, argsCnt>& max_values, bool erase_duplicates = false)
@@ -120,6 +130,16 @@ public:
 		{
 			return def;
 		}
+	}
+	const std::vector<element_type>& data() const noexcept
+	{
+		return buf;
+	}
+	friend std::ostream& operator<<(std::ostream& os, const Function& func)
+	{
+		for(const element_type& el : func.buf)
+			std::apply(std::bind_front(print_element, std::ref(os)), el) << '\n';
+		return os;
 	}
 };
 

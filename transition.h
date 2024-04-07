@@ -60,9 +60,6 @@ template<class LabelType>
 void sortByLabel(TransitionList<LabelType>& list);
 
 template<class LabelType>
-inline void sortByLabelDomain(TransitionList<LabelType>& list) = delete;
-
-template<class LabelType>
 struct TransitionList
 {
 	const State* statesCnt;
@@ -114,6 +111,17 @@ struct TransitionList
 		buffer.clear();
 		isSorted = false;
 	}
+	void sort(std::size_t maxValue, std::invocable<Transition<LabelType>> auto proj)
+	{
+		isSorted = false;
+		count(maxValue, proj);
+		for(std::size_t i = 1; i < startInd.size(); i++)
+			startInd[i] += startInd[i - 1];
+		std::vector<Transition<LabelType>> sorted(buffer.size());
+		for(auto& tr : buffer | std::views::reverse)
+			sorted[--startInd[std::invoke(proj, tr)]] = std::move(tr);
+		buffer = std::move(sorted);
+	}
 	friend std::ostream& operator<<(std::ostream& os, const TransitionList& list)
 	{
 		os << list.buffer.size() << '\n';
@@ -158,19 +166,6 @@ struct TransitionList
 	}
 private:
 	friend void sortByLabel<>(TransitionList<LabelType>& list);
-	friend void sortByLabelDomain<>(TransitionList<LabelType>& list);
-
-	void sort(std::size_t maxValue, std::invocable<Transition<LabelType>> auto proj)
-	{
-		isSorted = false;
-		count(maxValue, proj);
-		for(std::size_t i = 1; i < startInd.size(); i++)
-			startInd[i] += startInd[i - 1];
-		std::vector<Transition<LabelType>> sorted(buffer.size());
-		for(auto& tr : buffer | std::views::reverse)
-			sorted[--startInd[std::invoke(proj, tr)]] = std::move(tr);
-		buffer = std::move(sorted);
-	}
 	void count(std::size_t maxValue, std::invocable<Transition<LabelType>> auto proj)
 	{
 		startInd.resize(maxValue + 2);
@@ -201,6 +196,9 @@ inline void sortByLabel(TransitionList<SymbolPair>& list)
 	auto trLabelFirst = [](const Transition<SymbolPair>& tr) { return tr.Label().coords[0]; };
 	list.sort(std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), trLabelFirst);
 }
+
+template<class LabelType>
+inline void sortByLabelDomain(TransitionList<LabelType>& list) = delete;
 
 template<>
 inline void sortByLabelDomain(TransitionList<SymbolPair>& list)

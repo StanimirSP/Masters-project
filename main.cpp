@@ -7,7 +7,6 @@
 #include "regularExpression.h"
 #include "ThompsonsConstruction.h"
 #include "transducer.h"
-#include "bimachine.h"
 #include "contextualReplacementRule.h"
 #include "twostepBimachine.h"
 #include "classicalBimachine.h"
@@ -219,8 +218,8 @@ int main(int argc, char** argv) try
 	}*/
 
 	{
-		std::vector<BimachineWithFinalOutput> bm;
-		//std::vector<TwostepBimachine> bm;
+		//std::vector<BimachineWithFinalOutput> bm;
+		std::vector<TwostepBimachine> bm;
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		{
 			auto start = std::chrono::steady_clock::now();
@@ -271,6 +270,32 @@ int main(int argc, char** argv) try
 		ClassicalFSA result = T.intersect(T2.complement());
 		std::cerr << "Minimizing...\n";
 		result.pseudoMinimize().print();
+	}*/
+
+	/*{
+		const std::string alphabet = "ab";
+		std::vector<ContextualReplacementRule> rules{
+			{"[a,_]*[aa,A]|[ab,_]"s, "a"s, "aa|b"s},
+		};
+		std::vector<ContextualReplacementRuleRepresentation> batch;
+		for(std::size_t i = 0; i < rules.size(); i++)
+		{
+			batch.emplace_back(rules[i], alphabet);
+			//std::cerr << "rule " << i << ":\n";
+			//batch[i].center_rt.trim().print(std::cerr << "middle:\n");
+			//batch[i].left.trim().print(std::cerr << "left:\n");
+			//batch[i].right.trim().print(std::cerr << "right:\n");
+			//std::cerr << "output for epsilon: " << batch[i].output_for_epsilon.value_or("none!") << "\n\n";
+		}
+		//TSBM_LeftAutomaton left(std::move(batch));
+		//TSBM_RightAutomaton right(std::move(batch));
+		//TwostepBimachine tsbm(batch);
+		//std::cout << tsbm("aaaaaabaaab") << std::endl;
+		//std::cout << "-----------------------\n";
+
+		BimachineWithFinalOutput bmfo(batch);
+		std::cout << bmfo("aaaaaabaaab") << std::endl;
+		std::cout << "=========================\n";
 	}*/
 }
 catch(const std::exception& e)

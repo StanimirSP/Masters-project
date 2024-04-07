@@ -10,6 +10,9 @@
 #include <string>
 #include <string_view>
 #include <cstddef>
+#include <cstdint>
+#include <map>
+#include <vector>
 #include <functional>
 #include "constants.h"
 
@@ -24,6 +27,17 @@ struct IndirectlyCompare
 		return cmp(*std::forward<T>(a), *std::forward<U>(b));
 	}
 };
+
+template<class ProfileType>
+inline std::size_t find_colors_helper(std::vector<State>& color_of, const std::vector<ProfileType>& profile, const std::vector<std::uint32_t>& index_of_state)
+{
+	color_of.clear();
+	color_of.reserve(index_of_state.size());
+	std::map<const ProfileType*, State, IndirectlyCompare<>> map_profiles;
+	for(std::uint32_t index : index_of_state)
+		color_of.push_back(map_profiles.try_emplace(&profile[index], map_profiles.size()).first->second);
+	return map_profiles.size();
+}
 
 struct SymbolOrEpsilon
 {

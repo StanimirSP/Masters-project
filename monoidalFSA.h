@@ -260,7 +260,10 @@ protected:
 		newTransitions.buffer.reserve(transitions.buffer.size());
 		for(auto& tr : transitions.buffer) // transitions are still reversed!
 			newTransitions.buffer.emplace_back(color_of[tr.To()], std::move(tr.Label()), color_of[tr.From()]);
-		sortByLabel(newTransitions);
+		if constexpr(std::is_same_v<LabelType, SymbolOrEpsilon>) // sort according to alphabetOrder; this will help the pseudo-minimization of bimachines
+			newTransitions.sort(alphabet.size() - 1, [&order = alphabetOrder](const Transition<LabelType>& tr) { return order[tr.Label()]; });
+		else // needed only for erasing duplicates
+			sortByLabel(newTransitions);
 		newTransitions.sort();
 		newTransitions.buffer.erase(std::ranges::unique(newTransitions.buffer).begin(), newTransitions.buffer.end());
 		newTransitions.isSorted = false; // because newTransitions.startInd is now invalid
@@ -383,8 +386,6 @@ public:
 	}
 	[[nodiscard]] MonoidalFSA Union(const MonoidalFSA& rhs) &&
 	{
-		/*if(transitions.buffer.size() < rhs.transitions.buffer.size())
-			std::swap(*this, rhs);*/
 		MonoidalFSA un(std::move(*this));
 		un.transitions.isSorted = false;
 		for(const auto& tr : rhs.transitions.buffer)
@@ -397,8 +398,6 @@ public:
 		un.statesCnt += rhs.statesCnt;
 		return un;
 	}
-	//[[nodiscard]] MonoidalFSA Union(const MonoidalFSA& rhs) && { return std::move(*this).Union(MonoidalFSA{rhs}); }
-	//[[nodiscard]] MonoidalFSA Union(MonoidalFSA&& rhs) const& { return MonoidalFSA{*this}.Union(std::move(rhs)); }
 	[[nodiscard]] MonoidalFSA Union(const MonoidalFSA& rhs) const& { return MonoidalFSA{*this}.Union(MonoidalFSA{rhs}); }
 	[[nodiscard]] MonoidalFSA Concatenation(const MonoidalFSA& rhs) &&
 	{
