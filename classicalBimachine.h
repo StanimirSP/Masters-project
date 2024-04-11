@@ -63,9 +63,8 @@ class BimachineWithFinalOutput
 	{
 		LeftState init{*left.DFA.initial.begin()};
 		for(const auto& [right_state_ptr, right_ind] : right_classes)
-		//for(const auto& [right_state, right_st_name] : right.A_R.stateNames)
-			if(State st = TwostepBimachine::nu(right, left.containsFinalOf[init.lctx], *right_state_ptr /* right_state */); st != Constants::InvalidState)
-				init.phi.emplace(right_ind /* right_st_name */, st);
+			if(State st = TwostepBimachine::nu(right, left.containsFinalOf[init.lctx], *right_state_ptr); st != Constants::InvalidState)
+				init.phi.emplace(right_ind, st);
 		return init;
 	}
 	std::pair<State, Word> next_left_helper(const LeftState& from,
@@ -182,10 +181,10 @@ class BimachineWithFinalOutput
 	{
 		std::vector<State> color_of_left, color_of_right;
 		auto [colors_left_cnt, colors_right_cnt] = find_colors(color_of_left, color_of_right, left_states_of_index, right_states_of_index, index_of_left_state, index_of_right_state);
-		this->left.coloredPseudoMinimize(colors_left_cnt, color_of_left, this->left.findPseudoAlphabet());
-		this->right.coloredPseudoMinimize(colors_right_cnt, color_of_right, this->right.findPseudoAlphabet());
-		this->left.transitions.sort(); // needed for calling findPath; coloredPseudoMinimize is optimized to leave transitions sorted by Label() according to alphabetOrder as a side effect
-		this->right.transitions.sort(); // same as above but for the right automaton
+		left.coloredPseudoMinimize(colors_left_cnt, color_of_left, left.findPseudoAlphabet());
+		right.coloredPseudoMinimize(colors_right_cnt, color_of_right, right.findPseudoAlphabet());
+		left.transitions.sort(left.statesCnt); // needed for calling findPath; coloredPseudoMinimize is optimized to leave transitions sorted by Label() according to alphabetOrder as a side effect
+		right.transitions.sort(right.statesCnt); // same as above but for the right automaton
 		update_functions(color_of_left, color_of_right, left_states_of_index, right_states_of_index);
 	}
 public:
@@ -201,7 +200,7 @@ public:
 
 		// needed for calculate_g_of_mu
 		sortByLabelDomain(right.A_T.transitions);
-		right.A_T.transitions.sort();
+		right.A_T.transitions.sort(right.A_T.statesCnt);
 
 		Internal::FSA<LeftState> left;
 		left.stateNames.emplace(initial_left(leftctx, right, right_classes), 0);

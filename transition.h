@@ -62,24 +62,18 @@ void sortByLabel(TransitionList<LabelType>& list);
 template<class LabelType>
 struct TransitionList
 {
-	const State* statesCnt;
 	std::vector<std::size_t> startInd;
 	std::vector<Transition<LabelType>> buffer;
 	bool isSorted = false; // if false, startInd is invalid
 
-	TransitionList(const State* statesCnt = nullptr): statesCnt(statesCnt) {}
-	void sort()
+	void sort(std::size_t states_cnt)
 	{
-		if(!statesCnt)
-			throw std::runtime_error("invalid call of sort() [statesCnt is nullptr]");
-		if(!isSorted) sort(static_cast<std::size_t>(*statesCnt) - 1, &Transition<LabelType>::From);
+		if(!isSorted) sort(states_cnt - 1, &Transition<LabelType>::From);
 		isSorted = true;
 	}
-	void sortByTo()
+	void sortByTo(std::size_t states_cnt)
 	{
-		if(!statesCnt)
-			throw std::runtime_error("invalid call of sort() [statesCnt is nullptr]");
-		sort(static_cast<std::size_t>(*statesCnt) - 1, &Transition<LabelType>::To);
+		sort(states_cnt - 1, &Transition<LabelType>::To);
 	}
 	TransitionList& reverse() noexcept
 	{
@@ -88,12 +82,10 @@ struct TransitionList
 			tr.reverse();
 		return *this;
 	}
-	TransitionList& reflexiveClose()
+	TransitionList& reflexiveClose(std::size_t states_cnt)
 	{
-		if(!statesCnt)
-			throw std::runtime_error("invalid call of reflexiveClose() [statesCnt is nullptr]");
 		isSorted = false;
-		for(State i = 0; i < *statesCnt; i++)
+		for(State i = 0; i < states_cnt; i++)
 			buffer.emplace_back(i, LabelType::epsilon(), i);
 		return *this;
 	}

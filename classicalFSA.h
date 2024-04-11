@@ -34,13 +34,13 @@ class ClassicalFSA: public MonoidalFSA<SymbolOrEpsilon>
 	{
 		if(!epsilonFree)
 			this->removeEpsilon().trim();
-		this->transitions.sort();
+		this->transitions.sort(this->statesCnt);
 		std::map<std::set<State>, State> newStates;
 		std::queue<const std::set<State>*> q;
 		newStates[std::set<State>(this->initial.begin(), this->initial.end())] = 0;
 		q.push(&newStates.begin()->first);
 		this->statesCnt = 1;
-		TransitionList<SymbolOrEpsilon> newTransitions{&this->statesCnt};
+		TransitionList<SymbolOrEpsilon> newTransitions;
 		std::unordered_set<State> newFinal;
 		if(containsFinalState(*q.front()))
 			newFinal.insert(0);

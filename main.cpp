@@ -218,8 +218,8 @@ int main(int argc, char** argv) try
 	}*/
 
 	{
-		//std::vector<BimachineWithFinalOutput> bm;
-		std::vector<TwostepBimachine> bm;
+		std::vector<BimachineWithFinalOutput> bm;
+		//std::vector<TwostepBimachine> bm;
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		{
 			auto start = std::chrono::steady_clock::now();
@@ -231,14 +231,14 @@ int main(int argc, char** argv) try
 				batch.clear();
 			}
 			auto end = std::chrono::steady_clock::now();
-			std::cerr << "elapsed time for construction: " << std::fixed << std::chrono::duration<double>(end - start).count() << " s\n";
+			std::cerr << "elapsed time for construction: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
 		}
 		Word input;
 		{
 			auto start = std::chrono::steady_clock::now();
 			input = readFromFile("/dev/stdin", '\0');
 			auto end = std::chrono::steady_clock::now();
-			std::cerr << "elapsed time for reading: " << std::fixed << std::chrono::duration<double>(end - start).count() << " s\n";
+			std::cerr << "elapsed time for reading: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
 		}
 		{
 			auto start = std::chrono::steady_clock::now();
@@ -251,13 +251,13 @@ int main(int argc, char** argv) try
 				// std::cerr << "}\n";
 			}
 			auto end = std::chrono::steady_clock::now();
-			std::cerr << "elapsed time for replacing: " << std::fixed << std::chrono::duration<double>(end - start).count() << " s\n";
+			std::cerr << "elapsed time for replacing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
 		}
 		{
 			auto start = std::chrono::steady_clock::now();
 			std::cout << input;
 			auto end = std::chrono::steady_clock::now();
-			std::cerr << "elapsed time for printing: " << std::fixed << std::chrono::duration<double>(end - start).count() << " s\n";
+			std::cerr << "elapsed time for printing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
 		}
 	}
 
@@ -282,16 +282,16 @@ int main(int argc, char** argv) try
 		{
 			batch.emplace_back(rules[i], alphabet);
 			//std::cerr << "rule " << i << ":\n";
-			//batch[i].center_rt.trim().print(std::cerr << "middle:\n");
+			batch[i].center_rt.trim().print(std::cerr << "middle:\n");
 			//batch[i].left.trim().print(std::cerr << "left:\n");
 			//batch[i].right.trim().print(std::cerr << "right:\n");
 			//std::cerr << "output for epsilon: " << batch[i].output_for_epsilon.value_or("none!") << "\n\n";
 		}
 		//TSBM_LeftAutomaton left(std::move(batch));
 		//TSBM_RightAutomaton right(std::move(batch));
-		//TwostepBimachine tsbm(batch);
-		//std::cout << tsbm("aaaaaabaaab") << std::endl;
-		//std::cout << "-----------------------\n";
+		TwostepBimachine tsbm(batch);
+		std::cout << tsbm("aaaaaabaaab") << std::endl;
+		std::cout << "-----------------------\n";
 
 		BimachineWithFinalOutput bmfo(batch);
 		std::cout << bmfo("aaaaaabaaab") << std::endl;

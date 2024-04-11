@@ -225,9 +225,9 @@ public:
 	{
 		ClassicalFSA A_rho = construct_A_rho(batch);
 		A_T = construct_A_T(batch);
-		A_rho.transitions.sort();
-		A_T.transitions.sortByTo();
-		A_T.transitions.sort();
+		A_rho.transitions.sort(A_rho.statesCnt);
+		A_T.transitions.sortByTo(A_T.statesCnt); // may reduce the side of the constructed automaton
+		A_T.transitions.sort(A_T.statesCnt);
 
 		A_R.stateNames.emplace(computeInitial_A_R(A_rho), 0);
 		A_R.states.push_back(&A_R.stateNames.begin()->first);
@@ -517,10 +517,10 @@ class TwostepBimachine
 	{
 		std::vector<State> color_of_left, color_of_right;
 		auto [colors_left_cnt, colors_right_cnt] = find_colors(color_of_left, color_of_right, left_states_of_index, right_states_of_index, index_of_left_state, index_of_right_state);
-		this->left.coloredPseudoMinimize(colors_left_cnt, color_of_left, this->left.findPseudoAlphabet());
-		this->right.coloredPseudoMinimize(colors_right_cnt, color_of_right, this->right.findPseudoAlphabet());
-		this->left.transitions.sort(); // needed for calling findPath; coloredPseudoMinimize is optimized to leave transitions sorted by Label() according to alphabetOrder as a side effect
-		this->right.transitions.sort(); // same as above but for the right automaton
+		left.coloredPseudoMinimize(colors_left_cnt, color_of_left, left.findPseudoAlphabet());
+		right.coloredPseudoMinimize(colors_right_cnt, color_of_right, right.findPseudoAlphabet());
+		left.transitions.sort(left.statesCnt); // needed for calling findPath; coloredPseudoMinimize is optimized to leave transitions sorted by Label() according to alphabetOrder as a side effect
+		right.transitions.sort(right.statesCnt); // same as above but for the right automaton
 		update_functions(color_of_left, color_of_right, left_states_of_index, right_states_of_index);
 	}
 	void prepare_functions()
@@ -566,7 +566,7 @@ public:
 			auto right_classes = right.init_index(index_of_right_state, right_states_of_index);
 
 			q_err = right.A_T.statesCnt;
-			right.A_T.transitions.sort(); // needed for calling calculate_mu
+			right.A_T.transitions.sort(right.A_T.statesCnt); // needed for calling calculate_mu
 			construct_functions(left, right, left_classes, right_classes, batch);
 			//construct_functions_debug(left, right, left_classes, right_classes, batch, left_states_of_index, right_states_of_index); // works together with prepare_functions()
 			type_of_final_center = std::move(right.type_of_final_center);

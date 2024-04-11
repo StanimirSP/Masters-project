@@ -80,7 +80,7 @@ class MonoidalFSA
 {
 protected:
 	State statesCnt = 0;
-	TransitionList<LabelType> transitions{&statesCnt};
+	TransitionList<LabelType> transitions;
 	std::unordered_set<State> initial, final;
 	std::vector<Symbol> alphabet;
 	std::unordered_map<Symbol, std::uint32_t> alphabetOrder;
@@ -175,7 +175,7 @@ protected:
 	MonoidalFSA& coloredPseudoMinimize(std::size_t colors_cnt, std::vector<State>& color_of, const std::vector<LabelType>& pseudoAlphabet)
 	{
 		sortByLabel(transitions.reverse());
-		transitions.sort();
+		transitions.sort(statesCnt);
 
 		auto cmpLabel = [](const Transition<LabelType>& a, const Transition<LabelType>& b) { return a.Label() < b.Label(); };
 		struct EquivalenceClass
@@ -256,7 +256,7 @@ protected:
 				newFinal.insert(color_of[fin]);
 			final = std::move(newFinal);
 		}
-		TransitionList<LabelType> newTransitions{&statesCnt};
+		TransitionList<LabelType> newTransitions;
 		newTransitions.buffer.reserve(transitions.buffer.size());
 		for(auto& tr : transitions.buffer) // transitions are still reversed!
 			newTransitions.buffer.emplace_back(color_of[tr.To()], std::move(tr.Label()), color_of[tr.From()]);
@@ -264,7 +264,7 @@ protected:
 			newTransitions.sort(alphabet.size() - 1, [&order = alphabetOrder](const Transition<LabelType>& tr) { return order[tr.Label()]; });
 		else // needed only for erasing duplicates
 			sortByLabel(newTransitions);
-		newTransitions.sort();
+		newTransitions.sort(statesCnt);
 		newTransitions.buffer.erase(std::ranges::unique(newTransitions.buffer).begin(), newTransitions.buffer.end());
 		newTransitions.isSorted = false; // because newTransitions.startInd is now invalid
 		transitions = std::move(newTransitions);
@@ -273,9 +273,9 @@ protected:
 public:
 	MonoidalFSA& removeEpsilon()
 	{
-		transitions.sort();
+		transitions.sort(statesCnt);
 		epsCloseInitial();
-		TransitionList<LabelType> newTransitions{&statesCnt};
+		TransitionList<LabelType> newTransitions;
 		newTransitions.startInd.reserve(statesCnt + 1);
 		newTransitions.buffer.reserve(transitions.buffer.size());
 		State lastState = Constants::InvalidState;
@@ -297,14 +297,14 @@ public:
 	}
 	MonoidalFSA& trim()
 	{
-		transitions.sort();
+		transitions.sort(statesCnt);
 		std::vector<State> newStates(statesCnt);
 		auto markReachable = [&newStates](State st) { newStates[st]++; };
 		auto notVisited = [&newStates](const Transition<LabelType>& tr) -> bool { return newStates[tr.To()] == 0; };
 		for(State init : initial)
 			if(newStates[init] == 0)
 				BFS(init, markReachable, notVisited);
-		transitions.reverse().sort();
+		transitions.reverse().sort(statesCnt);
 		auto visitedOnce = [&newStates](const Transition<LabelType>& tr) -> bool { return newStates[tr.To()] == 1; };
 		for(State fin : final)
 			if(newStates[fin] == 1)
@@ -331,8 +331,8 @@ public:
 	template<std::invocable<LabelType, LabelType> Proj, std::predicate<LabelType, LabelType> Cond = Constants::AlwaysTrue>
 	[[nodiscard]] auto product(MonoidalFSA& rhs, Proj tranformLabel, Cond labelCondition = {})
 	{
-		this->transitions.sort();
-		rhs.transitions.sort();
+		this->transitions.sort(this->statesCnt);
+		rhs.transitions.sort(rhs.statesCnt);
 		MonoidalFSA<decltype(tranformLabel(std::declval<LabelType>(), std::declval<LabelType>()))> prod;
 
 		// initialize alphabet
@@ -543,13 +543,14 @@ public:
 	}
 	MonoidalFSA& pseudoDeterm()
 	{
-		this->removeEpsilon().trim().transitions.sort();
+		this->removeEpsilon().trim();
+		this->transitions.sort(this->statesCnt);
 		std::map<std::set<State>, State> newStates;
 		std::queue<const std::set<State>*> q;
 		newStates[std::set<State>(this->initial.begin(), this->initial.end())] = 0;
 		q.push(&newStates.begin()->first);
 		this->statesCnt = 1;
-		TransitionList<LabelType> newTransitions{&this->statesCnt};
+		TransitionList<LabelType> newTransitions;
 		std::unordered_set<State> newFinal;
 		if(containsFinalState(*q.front()))
 			newFinal.insert(0);
@@ -586,7 +587,7 @@ public:
 		if(final.empty()) return *this;
 		sortByLabel(transitions);
 		std::vector<LabelType> pseudoAlphabet = findPseudoAlphabet();
-		transitions.sort();
+		transitions.sort(statesCnt);
 		complete(pseudoAlphabet);
 
 		std::vector<State> color_of;
@@ -594,149 +595,8 @@ public:
 		for(State st = 0; st < statesCnt; st++)
 			color_of.push_back(!final.contains(st));
 		return coloredPseudoMinimize(final.size() == statesCnt ? 1 : 2, color_of, pseudoAlphabet).trim();
-
-		/*pseudoDeterm();
-		if(final.empty()) return *this;
-		sortByLabel(transitions);
-		std::vector<LabelType> pseudoAlphabet = findPseudoAlphabet();
-		transitions.sort();
-		complete(pseudoAlphabet);
-		sortByLabel(transitions.reverse());
-		transitions.sort();
-
-		std::vector<State> classInd; // classInd[i] == j <=> state i belongs to equivalence class j
-		classInd.reserve(statesCnt);
-
-		auto cmpLabel = [](const Transition<LabelType>& a, const Transition<LabelType>& b) { return a.Label() < b.Label(); };
-		struct EquivalenceClass
-		{
-			std::unordered_set<State> members; // which states are in the current class
-			std::vector<State> plus; // subset of members
-			std::vector<bool> inQueue; // inQueue[i] <=> (members, pseudoAlphabet[i]) in q
-			EquivalenceClass(std::size_t alphabet_size): inQueue(alphabet_size) {}
-		};
-		std::vector<EquivalenceClass> eqClassBuffer;
-		{ // initialize equivance classes
-			EquivalenceClass finals(pseudoAlphabet.size()), nonfinals(pseudoAlphabet.size());
-			for(State st = 0; st < statesCnt; st++)
-				if(final.contains(st))
-				{
-					finals.members.insert(st);
-					classInd.push_back(0);
-				}
-				else
-				{
-					nonfinals.members.insert(st);
-					classInd.push_back(1);
-				}
-			eqClassBuffer.push_back(std::move(finals));
-			if(!nonfinals.members.empty())
-				eqClassBuffer.push_back(std::move(nonfinals));
-		}
-
-		std::queue<std::pair<State, State>> q; // queue of pairs ("equvance class index", "letter index")
-		{ // initialize queue
-			State smallerClassInd = (eqClassBuffer.size() < 2 || eqClassBuffer[0].members.size() < eqClassBuffer[1].members.size()) ? 0 : 1;
-			for(std::size_t letterInd = 0; letterInd < pseudoAlphabet.size(); letterInd++)
-			{
-				q.emplace(smallerClassInd, letterInd);
-				eqClassBuffer[smallerClassInd].inQueue[letterInd] = true;
-			}
-		}
-		std::queue<State> splitQueue; // queue of class indices which may split; it is defined outside the outer loop to avoid reallocations
-		while(!q.empty())
-		{
-			auto [classIndex, letterInd] = q.front();
-			q.pop();
-			eqClassBuffer[classIndex].inQueue[letterInd] = false;
-			for(State s1 : eqClassBuffer[classIndex].members)
-				for(const auto& tr : std::ranges::equal_range(transitions(s1), Transition{s1, pseudoAlphabet[letterInd], Constants::InvalidState}, cmpLabel))
-				{ // (s1, a, tr.To()) is in reversed transitions
-					State targetClassInd = classInd[tr.To()];
-					EquivalenceClass& targetClass = eqClassBuffer[targetClassInd];
-					if(targetClass.plus.empty())
-						splitQueue.push(targetClassInd);
-					targetClass.plus.push_back(tr.To());
-				}
-
-			while(!splitQueue.empty())
-			{
-				State toSplitInd = splitQueue.front();
-				splitQueue.pop();
-				if(eqClassBuffer[toSplitInd].members.size() != eqClassBuffer[toSplitInd].plus.size()) // toSplit indeed splits
-				{
-					if(eqClassBuffer[toSplitInd].members.size() < eqClassBuffer[toSplitInd].plus.size())
-						throw std::logic_error("should never happen");
-					eqClassBuffer.emplace_back(pseudoAlphabet.size());
-					State newClassInd = eqClassBuffer.size() - 1;
-					EquivalenceClass& newClass = eqClassBuffer[newClassInd];
-					for(State toMove : eqClassBuffer[toSplitInd].plus)
-					{
-						eqClassBuffer[toSplitInd].members.erase(toMove);
-						newClass.members.insert(toMove);
-						classInd[toMove] = newClassInd;
-					}
-					for(std::size_t letterInd = 0; letterInd < pseudoAlphabet.size(); letterInd++)
-						if(eqClassBuffer[toSplitInd].inQueue[letterInd])
-						{
-							q.emplace(newClassInd, letterInd);
-							newClass.inQueue[letterInd] = true;
-						}
-						else
-						{
-							State smallerClassInd = eqClassBuffer[toSplitInd].members.size() < newClass.members.size() ? toSplitInd : newClassInd;
-							q.emplace(smallerClassInd, letterInd);
-							eqClassBuffer[smallerClassInd].inQueue[letterInd] = true;
-						}
-				}
-				eqClassBuffer[toSplitInd].plus.clear();
-			}
-			// splitQueue is now empty and prepared for the next iteration
-		}
-
-		statesCnt = eqClassBuffer.size();
-		initial = {classInd[*initial.begin()]}; // new initial state is the class of the old initial state
-		{
-			std::unordered_set<State> newFinal;
-			for(State fin : final)
-				newFinal.insert(classInd[fin]);
-			final = std::move(newFinal);
-		}
-		TransitionList<LabelType> newTransitions{&statesCnt};
-		newTransitions.buffer.reserve(transitions.buffer.size());
-		for(auto& tr : transitions.buffer) // transitions are still reversed!
-			newTransitions.buffer.emplace_back(classInd[tr.To()], std::move(tr.Label()), classInd[tr.From()]);
-		sortByLabel(newTransitions);
-		newTransitions.sort();
-		newTransitions.buffer.erase(std::ranges::unique(newTransitions.buffer).begin(), newTransitions.buffer.end());
-		newTransitions.isSorted = false; // because newTransitions.startInd is now invalid
-		transitions = std::move(newTransitions);
-		return trim();*/
 	}
 
-	MonoidalFSA() = default;
-	MonoidalFSA(const MonoidalFSA& rhs): statesCnt(rhs.statesCnt), transitions(rhs.transitions),
-		initial(rhs.initial), final(rhs.final), alphabet(rhs.alphabet), alphabetOrder(rhs.alphabetOrder)
-	{
-		transitions.statesCnt = &statesCnt;
-	}
-	MonoidalFSA(MonoidalFSA&& rhs): statesCnt(std::exchange(rhs.statesCnt, 0)), transitions(std::move(rhs.transitions)),
-		initial(std::move(rhs.initial)), final(std::move(rhs.final)), alphabet(std::move(rhs.alphabet)), alphabetOrder(std::move(rhs.alphabetOrder))
-	{
-		transitions.statesCnt = &statesCnt;
-	}
-	MonoidalFSA& operator=(MonoidalFSA rhs)
-	{
-		using std::swap;
-		swap(statesCnt, rhs.statesCnt);
-		swap(transitions, rhs.transitions);
-		transitions.statesCnt = &statesCnt;
-		swap(initial, rhs.initial);
-		swap(final, rhs.final);
-		swap(alphabet, rhs.alphabet);
-		swap(alphabetOrder, rhs.alphabetOrder);
-		return *this;
-	}
 	std::ostream& print(std::ostream& os = std::cout) const
 	{
 		os << "States: " << statesCnt << '\n';
@@ -758,7 +618,6 @@ public:
 		final.clear();
 		transitions.clear();
 		alphabet.clear();
-		//std::ranges::fill(alphabetOrder, -1);
 		alphabetOrder.clear();
 	}
 	friend std::ostream& operator<<(std::ostream& os, const MonoidalFSA& T)

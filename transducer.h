@@ -44,15 +44,15 @@ private:
 	TransitionList<Word> epsilonClosureTape1() const
 		requires IsLetterType
 	{
-		TransitionList<SymbolOrEpsilon> epsTape1{&this->statesCnt};
-		TransitionList<Word> closure{&this->statesCnt};
+		TransitionList<SymbolOrEpsilon> epsTape1;
+		TransitionList<Word> closure;
 		for(const auto& tr : this->transitions.buffer)
 			if(tr.Label().coords[0] == Constants::Epsilon)
 			{
 				epsTape1.buffer.emplace_back(tr.From(), tr.Label().coords[1], tr.To());
 				closure.buffer.emplace_back(tr.From(), tr.Label().coords[1] == Constants::Epsilon ? Word{} : Word{tr.Label().coords[1]}, tr.To());
 			}
-		epsTape1.sort();
+		epsTape1.sort(this->statesCnt);
 		for(std::size_t i = 0; i < closure.buffer.size(); i++)
 		{
 			const Transition<Word>& curr = closure.buffer[i];
@@ -158,8 +158,8 @@ public:
 		Transducer<false, Symbol_Word> rtime;
 		rtime.statesCnt = this->statesCnt;
 		TransitionList<Word> closure = epsilonClosureTape1(), reversed = closure;
-		closure.sort();
-		reversed.reverse().sort();
+		closure.sort(this->statesCnt);
+		reversed.reverse().sort(this->statesCnt);
 
 		// final states and outputs for epsilon
 		rtime.final = this->final;
@@ -198,7 +198,7 @@ public:
 	bool epsilonInDom()
 		requires IsLetterType
 	{
-		this->transitions.sort();
+		this->transitions.sort(this->statesCnt);
 		bool finalReachable = false;
 		auto markFinal = [&final = std::as_const(this->final), &finalReachable](State st) { if(final.contains(st)) finalReachable = true; };
 		auto isEpsTransitionTape1 = [](const Transition<LabelType>& tr) { return tr.Label().coords[0] == Constants::Epsilon; };
