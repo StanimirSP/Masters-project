@@ -7,7 +7,6 @@
 #include <map>
 #include <unordered_map>
 #include "twostepBimachine.h"
-#include "function.h"
 #include "classicalFSA.h"
 #include "monoidalFSA.h"
 #include "utilities.h"

@@ -17,7 +17,6 @@
 #include <functional>
 #include "classicalFSA.h"
 #include "contextualReplacementRule.h"
-#include "function.h"
 #include "utilities.h"
 
 #if __has_include(<boost/unordered/unordered_flat_map.hpp>)
