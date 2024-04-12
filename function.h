@@ -109,9 +109,8 @@ public:
 		}
 		prepared = true;
 	}
-	const Ret& operator()(const Args&... args) const
+	const Ret& at(const args_tuple& value) const
 	{
-		args_tuple value(args...);
 		auto range = binary_search<2>(search_first_arg(std::get<0>(value)), value); // startInd gives us O(1) search on the first argument
 																					// for the rest arguments binary search is used
 		if(std::ranges::size(range) < 1)
@@ -120,16 +119,21 @@ public:
 			throw std::runtime_error("function ambiguously defined");
 		return std::get<0>(*std::ranges::begin(range));
 	}
+	const Ret& at_or(const args_tuple& value, const Ret& def) const
+	{
+		auto range = binary_search<2>(search_first_arg(std::get<0>(value)), value); // startInd gives us O(1) search on the first argument
+																					// for the rest arguments binary search is used
+		if(std::ranges::size(range) > 1)
+			throw std::runtime_error("function ambiguously defined");
+		return std::ranges::size(range) == 1 ? std::get<0>(*std::ranges::begin(range)) : def;
+	}
+	const Ret& operator()(const Args&... args) const
+	{
+		return at({args...});
+	}
 	const Ret& operator()(const Args&... args, const Ret& def) const
 	{
-		try
-		{
-			return (*this)(args...);
-		}
-		catch(const std::out_of_range&)
-		{
-			return def;
-		}
+		return at_or({args...}, def);
 	}
 	const std::vector<element_type>& data() const noexcept
 	{

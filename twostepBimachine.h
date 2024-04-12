@@ -319,16 +319,15 @@ public:
 		for(const auto& tr : A_T.transitions(q))
 		{
 			std::uint32_t letter_ind = A_R.alphabetOrder.find(tr.Label().first)->second; // tr.Label().first must be in the alphabet, no need to check
-			try
+			if(auto it = right_state.g_inv.find(tr.To()); it != right_state.g_inv.end())
 			{
-				std::size_t ind_in_g = right_state.g_inv.at(tr.To());
+				std::size_t ind_in_g = it->second;
 				if(buf_mu[letter_ind] > ind_in_g)
 				{
 					buf_mu[letter_ind] = ind_in_g;
 					buf_outputs[letter_ind] = tr.Label().second;
 				}
 			}
-			catch(const std::out_of_range&) {} // if tr.To() is not in Rng(g), do nothing
 		}
 		return buf_outputs;
 	}
@@ -338,16 +337,16 @@ public:
 	{
 		std::size_t mu = std::numeric_limits<std::size_t>::max();
 		Word output;
-		for(const auto& tr : std::ranges::equal_range(A_T.transitions(q), letter, {}, [](const Transition<Symbol_Word>& tr) { return tr.Label().first; })) try
-		{
-			std::size_t ind_in_g = right_state.g_inv.at(tr.To());
-			if(mu > ind_in_g)
+		for(const auto& tr : std::ranges::equal_range(A_T.transitions(q), letter, {}, [](const Transition<Symbol_Word>& tr) { return tr.Label().first; }))
+			if(auto it = right_state.g_inv.find(tr.To()); it != right_state.g_inv.end())
 			{
-				mu = ind_in_g;
-				output = tr.Label().second;
+				std::size_t ind_in_g = it->second;
+				if(mu > ind_in_g)
+				{
+					mu = ind_in_g;
+					output = tr.Label().second;
+				}
 			}
-		}
-		catch(const std::out_of_range&) {} // if tr.To() is not in Rng(g), do nothing
 		return {right_state.g[mu], std::move(output)};
 	}
 	const State_t& successor(const State_t& from, Symbol with) const
@@ -365,7 +364,6 @@ public:
 class TwostepBimachine
 {
 	ClassicalFSA left, right;
-	//std::vector<std::uint32_t> index_of_left_state, index_of_right_state;
 	Function<State, State, USymbol, State> delta;
 	Function<Word, State, USymbol, State> psi_delta;
 	Function<State, State, State> tau;

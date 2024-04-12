@@ -33,14 +33,14 @@ namespace PorterStemmer
 	using namespace std::string_literals;
 	inline const std::vector<ContextualReplacementRule> steps[] = {
 		/*{ // 0
-			{"[_,\x02]"s, letter + letter + letter, whitespace}, // only allow words of lenght > 2 to be modified
+			{"[_,\x02]"s, letter + letter + letter, whitespace}, // only allow words of length > 2 to be modified
 		},*/
 		{ // 1a
 			{"[sses,ss\x02]"s, "_"s, whitespace},						// SSES -> SS
 			{"[ies,i\x02]"s, "_"s, whitespace},							// IES  -> I
 			{"[ss,ss\x02]"s, /*"_"s*/ letter, whitespace},				// SS   -> SS
 			{"[s,\x02]"s, /*"_"s*/ letter + letter, whitespace},		// S    ->
-			{"[_,\x02]"s, letter + letter + "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|t|u|v|w|x|y|z)", whitespace},		// only allow words of lenght > 2 to be modified
+			{"[_,\x02]"s, letter + letter + "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|t|u|v|w|x|y|z)", whitespace},		// only allow words of length > 2 to be modified
 		},
 		{ // 1b -- '\x01' is used as a marker for whether step 1b' should take place
 			{"[eed,ee]"s, m_gt_0, rctx},					// (m>0) EED -> EE

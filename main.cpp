@@ -225,10 +225,13 @@ int main(int argc, char** argv) try
 			auto start = std::chrono::steady_clock::now();
 			for(std::size_t i = 0; i < PorterStemmer::steps_cnt; i++)
 			{
+				auto start = std::chrono::steady_clock::now();
 				for(std::size_t j = 0; j < PorterStemmer::steps[i].size(); j++)
 					batch.emplace_back(PorterStemmer::steps[i][j], PorterStemmer::alphabet);
 				bm.emplace_back(std::move(batch));
 				batch.clear();
+				auto end = std::chrono::steady_clock::now();
+				std::cerr << "\telapsed time for construction of step " << i << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
 			}
 			auto end = std::chrono::steady_clock::now();
 			std::cerr << "elapsed time for construction: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
@@ -244,11 +247,14 @@ int main(int argc, char** argv) try
 			auto start = std::chrono::steady_clock::now();
 			for(std::size_t i = 0; i < PorterStemmer::steps_cnt; i++)
 			{
+				auto start = std::chrono::steady_clock::now();
 				input = bm[i](input);
 				// std::cerr << "{ ";
 				// for(int c : input)
 				// 	std::cerr << std::hex << c << ' ';
 				// std::cerr << "}\n";
+				auto end = std::chrono::steady_clock::now();
+				std::cerr << "\telapsed time for replacing at step " << i << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
 			}
 			auto end = std::chrono::steady_clock::now();
 			std::cerr << "elapsed time for replacing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";

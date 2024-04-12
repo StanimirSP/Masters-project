@@ -29,32 +29,20 @@ namespace std
 			return seed ^= std::hash<State>{}(p.second) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		}
 	};*/
-	/*template<>
-	struct hash<pair<USymbol, State>>
-	{
-		std::size_t operator()(const pair<USymbol, State>& p) const
-		{
-			auto seed = std::hash<USymbol>{}(p.first);
-			boost::hash_combine(seed, std::hash<State>{}(p.second));
-			return seed;
-		}
-	};*/
 }
 
 class BimachineWithFinalOutput
 {
 	ClassicalFSA left, right;
-	//std::vector<std::uint32_t> index_of_left_state, index_of_right_state;//, index_of_leftctx_state;
 	Function<Word, State, USymbol, State> psi;
 	//std::vector<std::unordered_map<std::pair<USymbol, State>, Word>> psi;
-	//std::vector<boost::unordered_flat_map<std::pair<USymbol, State>, Word>> psi;
 	//boost::unordered_flat_map<std::tuple<State, USymbol, State>, Word> psi;
 	std::unordered_map<State, Word> iota;
 
 	struct LeftState
 	{
 		State lctx;
-		std::map</*std::uint32_t*/ State, State> phi;
+		std::map<std::uint32_t /* State */, State> phi;
 
 		auto operator<=>(const LeftState&) const = default;
 	};
@@ -124,9 +112,6 @@ class BimachineWithFinalOutput
 			if(!(output.size() == 1 && output[0] == letter))
 			{
 				psi.emplace(output, index_of_left_state[from] /* from */, letter, right_ind);
-				/*if(index_of_left_state[from] >= psi.size())
-					psi.resize(index_of_left_state[from] + 1);
-				psi[index_of_left_state[from]][{letter, right_ind}] = output;*/
 				//psi[{index_of_left_state[from], letter, right_ind}] = output;
 			}
 		}
@@ -144,7 +129,9 @@ class BimachineWithFinalOutput
 		std::vector<left_profile_t> left_profile(left_states_of_index.size());
 		std::vector<right_profile_t> right_profile(right_states_of_index.size());
 		for(const auto& [ret, left_index, a, right_index] : psi.data())
+		//for(const auto& [args, ret] : psi)
 		{
+			//const auto& [left_index, a, right_index] = args;
 			std::get<0>(left_profile[left_index]).emplace(right_index, a, ret);
 			right_profile[right_index].emplace(left_index, a, ret);
 		}
@@ -162,8 +149,13 @@ class BimachineWithFinalOutput
 		{
 			decltype(psi) updated;
 			for(const auto& [ret, left_index, a, right_index] : psi.data())
+			//for(const auto& [args, ret] : psi)
+			{
+				//const auto& [left_index, a, right_index] = args;
 				for(auto [L, R] : std::views::cartesian_product(left_states_of_index[left_index], right_states_of_index[right_index]))
 					updated.emplace(ret, color_of_left[L], a, color_of_right[R]);
+					//updated[{color_of_left[L], a, color_of_right[R]}] = ret;
+			}
 			psi = std::move(updated);
 		}
 		{
@@ -195,7 +187,7 @@ public:
 		std::vector<std::vector<State>> left_states_of_index, right_states_of_index;
 		TSBM_LeftAutomaton leftctx{std::move(batch)};
 		TSBM_RightAutomaton right{std::move(batch)};
-		/*auto leftctx_classes = */leftctx.init_index(index_of_leftctx_state);
+		leftctx.init_index(index_of_leftctx_state);
 		auto right_classes = right.init_index(index_of_right_state, right_states_of_index);
 
 		// needed for calculate_g_of_mu
@@ -247,7 +239,6 @@ public:
 
 		pseudo_minimize(left_states_of_index, right_states_of_index, index_of_left_state, index_of_right_state);
 		psi.prepare({this->left.statesCnt - 1, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), this->right.statesCnt - 1}, true);
-		//psi.prepare({this->left.statesCnt - 1, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), right_classes.size() - 1 /* right.A_R.states.size() - 1 */}, true);
 
 		//std::cerr << "size psi: " << psi.data().size() << '\n';
 
@@ -263,30 +254,21 @@ public:
 	Word operator()(const Word& input) const
 	{
 		std::vector<State> right_path = right.findPath(std::ranges::reverse_view(input));
-		auto right_path_rev_range = right_path | std::views::reverse; //| std::views::transform([this](State r) { return index_of_right_state[r]; });
+		auto right_path_rev_range = right_path | std::views::reverse;
 
 		Word output;
 		State curr_left_st = *left.initial.begin();
 		for(auto right_path_rev_it = right_path_rev_range.begin(); Symbol s : input)
 		{
-			/*++right_path_rev_it;
-			try
-			{
-				//output += psi.at(index_of_left_state[curr_left_st]).at({s, *right_path_rev_it});
-				output += psi.at({index_of_left_state[curr_left_st], s, *right_path_rev_it});
-			}
-			catch(const std::out_of_range&)
-			{
-				output += s;
-			}*/
-			output += psi(/* index_of_left_state[curr_left_st] */ curr_left_st, s, *++right_path_rev_it, {s});
+			/*if(auto it = psi.find({curr_left_st, s, *++right_path_rev_it}); it != psi.end())
+				output += it->second;
+			else
+				output += s;*/
+			output += psi(curr_left_st, s, *++right_path_rev_it, {s});
 			curr_left_st = left.successor(curr_left_st, s);
 		}
-		try
-		{
-			output += iota.at(curr_left_st);
-		}
-		catch(const std::out_of_range&) {} // no final output for this state
+		if(auto it = iota.find(curr_left_st); it != iota.end())
+			output += it->second;
 		return output;
 	}
 };
