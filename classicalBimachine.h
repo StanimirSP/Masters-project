@@ -12,31 +12,22 @@
 #include "monoidalFSA.h"
 #include "utilities.h"
 
-#if __has_include(<boost/unordered/unordered_flat_map.hpp>) // && __has_include(<boost/functional/hash.hpp>)
+#if __has_include(<boost/unordered/unordered_flat_map.hpp>)
 #	include <boost/unordered/unordered_flat_map.hpp>
-//#	include <boost/functional/hash.hpp>
 #	define LIBBOOST_UNORDERED_FLAT_MAP_AVAILABLE
+#elifndef WARN_LIBBOOST_UNORDERED_FLAT_MAP_NOT_AVAILABLE
+#	warning "<boost/unordered/unordered_flat_map.hpp> was not found. Falling back to std::unordered_map. Install libboost for improved performance."
+#	define WARN_LIBBOOST_UNORDERED_FLAT_MAP_NOT_AVAILABLE
 #endif
-
-namespace std
-{
-	/*template<>
-	struct hash<pair<USymbol, State>>
-	{
-		std::size_t operator()(const pair<USymbol, State>& p) const
-		{
-			auto seed = std::hash<USymbol>{}(p.first);
-			return seed ^= std::hash<State>{}(p.second) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-		}
-	};*/
-}
 
 class BimachineWithFinalOutput
 {
 	ClassicalFSA left, right;
-	Function<Word, State, USymbol, State> psi;
-	//std::vector<std::unordered_map<std::pair<USymbol, State>, Word>> psi;
-	//boost::unordered_flat_map<std::tuple<State, USymbol, State>, Word> psi;
+#ifdef LIBBOOST_UNORDERED_FLAT_MAP_AVAILABLE
+	boost::unordered_flat_map<std::tuple<State, Symbol, State>, Word> psi;
+#else
+	std::unordered_map<std::tuple<State, Symbol, State>, Word, hash_tuple::hash<std::tuple<State, Symbol, State>>> psi;
+#endif
 	std::unordered_map<State, Word> iota;
 
 	struct LeftState
@@ -110,10 +101,7 @@ class BimachineWithFinalOutput
 			if(st != Constants::InvalidState)
 				next.phi.emplace(right_ind, st);
 			if(!(output.size() == 1 && output[0] == letter))
-			{
-				psi.emplace(output, index_of_left_state[from] /* from */, letter, right_ind);
-				//psi[{index_of_left_state[from], letter, right_ind}] = output;
-			}
+				psi[{index_of_left_state[from], letter, right_ind}] = output;
 		}
 		return next;
 	}
@@ -128,10 +116,9 @@ class BimachineWithFinalOutput
 		using right_profile_t = psi_profile_t;
 		std::vector<left_profile_t> left_profile(left_states_of_index.size());
 		std::vector<right_profile_t> right_profile(right_states_of_index.size());
-		for(const auto& [ret, left_index, a, right_index] : psi.data())
-		//for(const auto& [args, ret] : psi)
+		for(const auto& [args, ret] : psi)
 		{
-			//const auto& [left_index, a, right_index] = args;
+			const auto& [left_index, a, right_index] = args;
 			std::get<0>(left_profile[left_index]).emplace(right_index, a, ret);
 			right_profile[right_index].emplace(left_index, a, ret);
 		}
@@ -148,13 +135,11 @@ class BimachineWithFinalOutput
 	{
 		{
 			decltype(psi) updated;
-			for(const auto& [ret, left_index, a, right_index] : psi.data())
-			//for(const auto& [args, ret] : psi)
+			for(const auto& [args, ret] : psi)
 			{
-				//const auto& [left_index, a, right_index] = args;
+				const auto& [left_index, a, right_index] = args;
 				for(auto [L, R] : std::views::cartesian_product(left_states_of_index[left_index], right_states_of_index[right_index]))
-					updated.emplace(ret, color_of_left[L], a, color_of_right[R]);
-					//updated[{color_of_left[L], a, color_of_right[R]}] = ret;
+					updated[{color_of_left[L], a, color_of_right[R]}] = ret;
 			}
 			psi = std::move(updated);
 		}
@@ -238,18 +223,12 @@ public:
 		this->right = std::move(right.A_R).getMFSA();
 
 		pseudo_minimize(left_states_of_index, right_states_of_index, index_of_left_state, index_of_right_state);
-		psi.prepare({this->left.statesCnt - 1, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), this->right.statesCnt - 1}, true);
 
-		//std::cerr << "size psi: " << psi.data().size() << '\n';
 
 		//debug
+		//std::cerr << "size psi: " << psi.size() << '\n';
 		/*this->left.print(std::cerr << "left:\n") << '\n';
-		this->right.print(std::cerr << "right:\n") << '\n';
-		std::cerr << "size psi: " << psi.data().size() << '\n';
-		std::cerr << psi << '\n';
-		std::cerr << "size iota: " << iota.size() << '\n';
-		for(auto&& [st, output] : iota)
-			std::cerr << st << " -> " << output << '\n';*/
+		this->right.print(std::cerr << "right:\n") << '\n';*/
 	}
 	Word operator()(const Word& input) const
 	{
@@ -260,11 +239,7 @@ public:
 		State curr_left_st = *left.initial.begin();
 		for(auto right_path_rev_it = right_path_rev_range.begin(); Symbol s : input)
 		{
-			/*if(auto it = psi.find({curr_left_st, s, *++right_path_rev_it}); it != psi.end())
-				output += it->second;
-			else
-				output += s;*/
-			output += psi(curr_left_st, s, *++right_path_rev_it, {s});
+			output += value_or(psi, {curr_left_st, s, *++right_path_rev_it}, {s});
 			curr_left_st = left.successor(curr_left_st, s);
 		}
 		if(auto it = iota.find(curr_left_st); it != iota.end())

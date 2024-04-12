@@ -125,9 +125,7 @@ int main(int argc, char** argv) try
 		//	batch[i].center_rt.print(std::cerr);
 		//	std::cerr << "output for epsilon: " << batch[i].output_for_epsilon.value_or("none!") << "\n\n";
 		}
-
 		//TSBM_LeftAutomaton left(std::move(batch));
-
 		//TSBM_RightAutomaton right(std::move(batch));
 		TwostepBimachine tsbm(batch);
 		std::cout << tsbm("aa") << std::endl;
@@ -181,42 +179,25 @@ int main(int argc, char** argv) try
 		std::cout << "=========================\n";
 	}*/
 	/*{
-		std::vector<ContextualReplacementRule> rules = PorterStemmer::steps[1];
+		auto start = std::chrono::steady_clock::now();
+		const std::string alphabet = "\n !\"'()*+,-./0123456789:;=?ABCDEFGHIJKLMNOPQRSTUVWXYZ[]abcdefghijklmnopqrstuvwxyz";
+		std::vector<ContextualReplacementRule> rules{{"[a,a]|[ability,ytiliba]|[able,elba]|[about,tuoba]|[above,evoba]|[accept,tpecca]|[according,gnidrocca]|[account,tnuocca]|[across,ssorca]|[act,tca]|[action,noitca]|[activity,ytivitca]|[actually,yllautca]|[add,dda]|[address,sserdda]|[administration,noitartsinimda]|[admit,timda]|[adult,tluda]|[affect,tceffa]|[after,retfa]|[again,niaga]|[against,tsniaga]|[age,ega]|[agency,ycnega]|[agent,tnega]|[ago,oga]|[agree,eerga]|[agreement,tnemeerga]|[ahead,daeha]|[air,ria]|[all,lla]|[allow,wolla]|[almost,tsomla]|[alone,enola]|[along,gnola]|[already,ydaerla]|[also,osla]|[although,hguohtla]|[always,syawla]|[American,naciremA]|[among,gnoma]|[amount,tnuoma]|[analysis,sisylana]|[and,dna]|[animal,lamina]|[another,rehtona]|[answer,rewsna]|[any,yna]|[anyone,enoyna]|[anything,gnihtyna]|[appear,raeppa]|[apply,ylppa]|[approach,hcaorppa]|[area,aera]|[argue,eugra]|[arm,mra]|[around,dnuora]|[arrive,evirra]|[art,tra]|[article,elcitra]|[artist,tsitra]|[as,sa]|[ask,ksa]|[assume,emussa]|[at,ta]|[attack,kcatta]|[attention,noitnetta]|[attorney,yenrotta]|[audience,ecneidua]|[author,rohtua]|[authority,ytirohtua]|[available,elbaliava]|[avoid,diova]|[away,yawa]|[baby,ybab]|[back,kcab]|[bad,dab]|[bag,gab]|[ball,llab]|[bank,knab]|[bar,rab]|[base,esab]|[be,eb]|[beat,taeb]|[beautiful,lufituaeb]|[because,esuaceb]|[become,emoceb]|[bed,deb]|[before,erofeb]|[begin,nigeb]|[behavior,roivaheb]|[behind,dniheb]|[believe,eveileb]|[benefit,tifeneb]|[best,tseb]|[better,retteb]|[between,neewteb]|[beyond,dnoyeb]|[big,gib]|[bill,llib]|[billion,noillib]|[bit,tib]|[black,kcalb]|[blood,doolb]|[blue,eulb]|[board,draob]|[body,ydob]|[book,koob]|[born,nrob]|[both,htob]|[box,xob]|[boy,yob]|[break,kaerb]|[bring,gnirb]|[brother,rehtorb]|[budget,tegdub]|[build,dliub]|[building,gnidliub]|[business,ssenisub]|[but,tub]|[buy,yub]|[by,yb]|[call,llac]|[camera,aremac]|[campaign,ngiapmac]|[can,nac]|[cancer,recnac]|[candidate,etadidnac]|[capital,latipac]|[car,rac]|[card,drac]|[care,erac]|[career,reerac]|[carry,yrrac]|[case,esac]|[catch,hctac]|[cause,esuac]|[cell,llec]|[center,retnec]|[central,lartnec]|[century,yrutnec]|[certain,niatrec]|[certainly,ylniatrec]|[chair,riahc]|[challenge,egnellahc]|[chance,ecnahc]|[change,egnahc]|[character,retcarahc]|[charge,egrahc]|[check,kcehc]|[child,dlihc]|[choice,eciohc]|[choose,esoohc]|[church,hcruhc]|[citizen,nezitic]|[city,ytic]|[civil,livic]|[claim,mialc]|[class,ssalc]|[clear,raelc]|[clearly,ylraelc]|[close,esolc]|[coach,hcaoc]|[cold,dloc]|[collection,noitcelloc]|[college,egelloc]|[color,roloc]|[come,emoc]|[commercial,laicremmoc]|[common,nommoc]|[community,ytinummoc]|[company,ynapmoc]|[compare,erapmoc]|[computer,retupmoc]|[concern,nrecnoc]|[condition,noitidnoc]|[conference,ecnerefnoc]|[Congress,ssergnoC]|[consider,redisnoc]|[consumer,remusnoc]|[contain,niatnoc]|[continue,eunitnoc]|[control,lortnoc]|[cost,tsoc]|[could,dluoc]|[country,yrtnuoc]|[couple,elpuoc]|[course,esruoc]|[court,truoc]|[cover,revoc]|[create,etaerc]|[crime,emirc]|[cultural,larutluc]|[culture,erutluc]|[cup,puc]|[current,tnerruc]|[customer,remotsuc]|[cut,tuc]|[dark,krad]|[data,atad]|[daughter,rethguad]|[day,yad]|[dead,daed]|[deal,laed]|[death,htaed]|[debate,etabed]|[decade,edaced]|[decide,ediced]|[decision,noisiced]|[deep,peed]|[defense,esnefed]"s, "_"s, "_"s},
+		};
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		for(std::size_t i = 0; i < rules.size(); i++)
-			batch.emplace_back(rules[i], PorterStemmer::alphabet);
-
+		{
+			batch.emplace_back(rules[i], alphabet);
+		}
 		TwostepBimachine tsbm(batch);
-		std::cout << tsbm(" feed ") << std::endl;
-		std::cout << tsbm(" agreed ") << std::endl;
+		auto end = std::chrono::steady_clock::now();
+		std::cerr << "elapsed time for construction: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
 
-		std::cout << "-----------------------\n";
-
-		BimachineWithFinalOutput bmfo(batch);
-		std::cout << bmfo(" feed ") << std::endl;
-		std::cout << bmfo(" agreed ") << std::endl;
-
-		std::cout << "=========================\n";
-	}
-	{
-		std::vector<ContextualReplacementRule> rules = PorterStemmer::steps[7];
-		std::vector<ContextualReplacementRuleRepresentation> batch;
-		for(std::size_t i = 0; i < rules.size(); i++)
-			batch.emplace_back(rules[i], PorterStemmer::alphabet);
-
-		TwostepBimachine tsbm(batch);
-		std::cout << tsbm(" cease ") << std::endl;
-		std::cout << tsbm(" csase ") << std::endl;
-
-		std::cout << "-----------------------\n";
-
-		BimachineWithFinalOutput bmfo(batch);
-		std::cout << bmfo(" cease ") << std::endl;
-		std::cout << bmfo(" csase ") << std::endl;
-
-		std::cout << "=========================\n";
+		start = std::chrono::steady_clock::now();
+		Word input = readFromFile("/dev/stdin", '\0');
+		std::cout << tsbm(input) << std::endl;
+		end = std::chrono::steady_clock::now();
+		std::cerr << "elapsed time for replacing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
 	}*/
-
 	{
 		std::vector<BimachineWithFinalOutput> bm;
 		//std::vector<TwostepBimachine> bm;

@@ -20,6 +20,14 @@
 #include "function.h"
 #include "utilities.h"
 
+#if __has_include(<boost/unordered/unordered_flat_map.hpp>)
+#	include <boost/unordered/unordered_flat_map.hpp>
+#	define LIBBOOST_UNORDERED_FLAT_MAP_AVAILABLE
+#elifndef WARN_LIBBOOST_UNORDERED_FLAT_MAP_NOT_AVAILABLE
+#	warning "<boost/unordered/unordered_flat_map.hpp> was not found. Falling back to std::unordered_map. Install libboost for improved performance."
+#	define WARN_LIBBOOST_UNORDERED_FLAT_MAP_NOT_AVAILABLE
+#endif
+
 struct TSBM_LeftAutomaton
 {
 	ClassicalFSA DFA;
@@ -94,15 +102,6 @@ public:
 		}
 		return map;
 	}
-	/*State successor(State from, Symbol with) const
-	{
-		if(from >= DFA.statesCnt)
-			throw std::out_of_range("cannot get successor: state 'from' is out of range");
-		auto letterIndexIterator = DFA.alphabetOrder.find(with);
-		if(letterIndexIterator == DFA.alphabetOrder.end())
-			throw std::runtime_error("cannot get successor: '" + std::string{with} + "' is not in the alphabet");
-		return (DFA.transitions(from).begin() + letterIndexIterator->second)->To();
-	}*/
 };
 
 struct TSBM_RightAutomaton
@@ -364,10 +363,17 @@ public:
 class TwostepBimachine
 {
 	ClassicalFSA left, right;
-	Function<State, State, USymbol, State> delta;
-	Function<Word, State, USymbol, State> psi_delta;
-	Function<State, State, State> tau;
-	Function<Word, State, State> psi_tau;
+#ifdef LIBBOOST_UNORDERED_FLAT_MAP_AVAILABLE
+	boost::unordered_flat_map<std::tuple<State, USymbol, State>, State> delta;
+	boost::unordered_flat_map<std::tuple<State, USymbol, State>, Word> psi_delta;
+	boost::unordered_flat_map<std::tuple<State, State>, State> tau;
+	boost::unordered_flat_map<std::tuple<State, State>, Word> psi_tau;
+#else
+	std::unordered_map<std::tuple<State, Symbol, State>, State, hash_tuple::hash<std::tuple<State, Symbol, State>>> delta;
+	std::unordered_map<std::tuple<State, Symbol, State>, Word, hash_tuple::hash<std::tuple<State, Symbol, State>>> psi_delta;
+	std::unordered_map<std::tuple<State, State>, State, hash_tuple::hash<std::tuple<State, State>>> tau;
+	std::unordered_map<std::tuple<State, State>, Word, hash_tuple::hash<std::tuple<State, State>>> psi_tau;
+#endif
 	State q_err;
 	std::unordered_map<State, std::uint32_t> type_of_final_center;
 
@@ -387,61 +393,22 @@ class TwostepBimachine
 				for(std::size_t letter_ind = 0; letter_ind < mu.size(); letter_ind++)
 					if(mu[letter_ind] != std::numeric_limits<std::size_t>::max())
 					{
-						delta.emplace(right_state_ptr->g[mu[letter_ind]], q, right.A_R.alphabet[letter_ind], right_ind);
+						delta[{q, right.A_R.alphabet[letter_ind], right_ind}] = right_state_ptr->g[mu[letter_ind]];
 						if(!(outputs[letter_ind].size() == 1 && outputs[letter_ind][0] == right.A_R.alphabet[letter_ind])) // do not insert elements which represent identity on the letter to optimize psi_delta for size
-							psi_delta.emplace(outputs[letter_ind], q, right.A_R.alphabet[letter_ind], right_ind);
+							psi_delta[{q, right.A_R.alphabet[letter_ind], right_ind}] = outputs[letter_ind];
 					}
 			}
 
 			for(const auto& [rules_left_ctx_ok_ptr, left_ind] : left_classes)
 			{
 				if(State init = nu(right, *rules_left_ctx_ok_ptr, *right_state_ptr); init != Constants::InvalidState)
-					tau.emplace(init, left_ind, right_ind);
+					tau[{left_ind, right_ind}] = init;
 				if(std::uint32_t rule = minJ(right, batch, *rules_left_ctx_ok_ptr, *right_state_ptr);
 					rule != Constants::InvalidRule &&
 					!batch[rule].output_for_epsilon->empty() // do not insert elements which represent empty output to optimize psi_tau for size
 				)
-					psi_tau.emplace(*batch[rule].output_for_epsilon, left_ind, right_ind);
+					psi_tau[{left_ind, right_ind}] = *batch[rule].output_for_epsilon;
 			}
-		}
-	}
-	void construct_functions_debug(const TSBM_LeftAutomaton& left, const TSBM_RightAutomaton& right,
-								   const auto& left_classes, const auto& right_classes,
-								   const std::vector<ContextualReplacementRuleRepresentation>& batch,
-								   const std::vector<std::vector<State>>& left_states_of_index,
-								   const std::vector<std::vector<State>>& right_states_of_index) // no compression of functions by equivalence classes of states
-	{
-		// defined outside of the loops to avoid reallocations
-		std::vector<std::size_t> mu(right.A_R.alphabet.size());
-		std::vector<Word> outputs(right.A_R.alphabet.size());
-
-		for(const auto& [right_state_ptr, right_ind] : right_classes)
-		{
-			for(State q = 0; q < right.A_T.statesCnt; q++)
-			{
-				right.calculate_mu(mu, outputs, q, *right_state_ptr);
-				for(std::size_t letter_ind = 0; letter_ind < mu.size(); letter_ind++)
-					if(mu[letter_ind] != std::numeric_limits<std::size_t>::max())
-						for(State R : right_states_of_index[right_ind])
-						{
-							delta.emplace(right_state_ptr->g[mu[letter_ind]], q, right.A_R.alphabet[letter_ind], R);
-							if(!(outputs[letter_ind].size() == 1 && outputs[letter_ind][0] == right.A_R.alphabet[letter_ind])) // do not insert elements which represent identity on the letter to optimize psi_delta for size
-								psi_delta.emplace(outputs[letter_ind], q, right.A_R.alphabet[letter_ind], R);
-						}
-			}
-
-			for(const auto& [rules_left_ctx_ok_ptr, left_ind] : left_classes)
-				for(State R : right_states_of_index[right_ind])
-					for(State L : left_states_of_index[left_ind])
-					{
-						if(State init = nu(right, *rules_left_ctx_ok_ptr, *right_state_ptr); init != Constants::InvalidState)
-							tau.emplace(init, L, R);
-						if(std::uint32_t rule = minJ(right, batch, *rules_left_ctx_ok_ptr, *right_state_ptr);
-							rule != Constants::InvalidRule &&
-							!batch[rule].output_for_epsilon->empty() // do not insert elements which represent empty output to optimize psi_tau for size
-						)
-							psi_tau.emplace(*batch[rule].output_for_epsilon, L, R);
-					}
 		}
 	}
 	std::pair<std::size_t, std::size_t> find_colors(std::vector<State>& color_of_left, std::vector<State>& color_of_right,
@@ -459,20 +426,28 @@ class TwostepBimachine
 		std::vector<left_profile_t> left_profile(left_states_of_index.size());
 		std::vector<right_profile_t> right_profile(right_states_of_index.size());
 
-		for(const auto& [ret, q, a, right_index] : delta.data())
-			std::get<2>(right_profile[right_index]).emplace(q, a, ret);
-
-		for(const auto& [ret, q, a, right_index] : psi_delta.data())
-			std::get<3>(right_profile[right_index]).emplace(q, a, ret);
-
-		for(const auto& [ret, left_index, right_index] : tau.data())
+		for(const auto& [args, ret] : delta)
 		{
+			const auto& [q, a, right_index] = args;
+			std::get<2>(right_profile[right_index]).emplace(q, a, ret);
+		}
+
+		for(const auto& [args, ret] : psi_delta)
+		{
+			const auto& [q, a, right_index] = args;
+			std::get<3>(right_profile[right_index]).emplace(q, a, ret);
+		}
+
+		for(const auto& [args, ret] : tau)
+		{
+			const auto& [left_index, right_index] = args;
 			std::get<0>(right_profile[right_index]).emplace(left_index, ret);
 			std::get<0>(left_profile[left_index]).emplace(right_index, ret);
 		}
 
-		for(const auto& [ret, left_index, right_index] : psi_tau.data())
+		for(const auto& [args, ret] : psi_tau)
 		{
+			const auto& [left_index, right_index] = args;
 			std::get<1>(right_profile[right_index]).emplace(left_index, ret);
 			std::get<1>(left_profile[left_index]).emplace(right_index, ret);
 		}
@@ -486,23 +461,29 @@ class TwostepBimachine
 						  const std::vector<std::vector<State>>& left_states_of_index,
 						  const std::vector<std::vector<State>>& right_states_of_index)
 	{
-		auto update_deltalike = [&right_states_of_index, &color_of_right]<class Ret, class... Args>(Function<Ret, Args...>&fun)
+		auto update_deltalike = [&right_states_of_index, &color_of_right]<class Function>(Function & fun)
 		{
-			Function<Ret, Args...> updated;
-			for(const auto& [ret, q, a, right_index] : fun.data())
+			Function updated;
+			for(const auto& [args, ret] : fun)
+			{
+				const auto& [q, a, right_index] = args;
 				for(State R : right_states_of_index[right_index])
-					updated.emplace(ret, q, a, color_of_right[R]);
+					updated[{q, a, color_of_right[R]}] = ret;
+			}
 			fun = std::move(updated);
 		};
 		update_deltalike(delta);
 		update_deltalike(psi_delta);
 
-		auto update_taulike = [&right_states_of_index, &color_of_right, &left_states_of_index, &color_of_left]<class Ret, class... Args>(Function<Ret, Args...>&fun)
+		auto update_taulike = [&right_states_of_index, &color_of_right, &left_states_of_index, &color_of_left]<class Function>(Function & fun)
 		{
-			Function<Ret, Args...> updated;
-			for(const auto& [ret, left_index, right_index] : fun.data())
+			Function updated;
+			for(const auto& [args, ret] : fun)
+			{
+				const auto& [left_index, right_index] = args;
 				for(auto [L, R] : std::views::cartesian_product(left_states_of_index[left_index], right_states_of_index[right_index]))
-					updated.emplace(ret, color_of_left[L], color_of_right[R]);
+					updated[{color_of_left[L], color_of_right[R]}] = ret;
+			}
 			fun = std::move(updated);
 		};
 		update_taulike(tau);
@@ -520,13 +501,6 @@ class TwostepBimachine
 		left.transitions.sort(left.statesCnt); // needed for calling findPath; coloredPseudoMinimize is optimized to leave transitions sorted by Label() according to alphabetOrder as a side effect
 		right.transitions.sort(right.statesCnt); // same as above but for the right automaton
 		update_functions(color_of_left, color_of_right, left_states_of_index, right_states_of_index);
-	}
-	void prepare_functions()
-	{
-		tau.prepare({this->left.statesCnt - 1, this->right.statesCnt - 1}, true);
-		psi_tau.prepare({this->left.statesCnt - 1, this->right.statesCnt - 1}, true);
-		delta.prepare({q_err, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), this->right.statesCnt - 1}, true);
-		psi_delta.prepare({q_err, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), this->right.statesCnt - 1}, true);
 	}
 public:
 	static State nu(const TSBM_RightAutomaton & right, const std::ranges::forward_range auto & rules_left_ctx_ok, const TSBM_RightAutomaton::State_t & right_state)
@@ -566,60 +540,45 @@ public:
 			q_err = right.A_T.statesCnt;
 			right.A_T.transitions.sort(right.A_T.statesCnt); // needed for calling calculate_mu
 			construct_functions(left, right, left_classes, right_classes, batch);
-			//construct_functions_debug(left, right, left_classes, right_classes, batch, left_states_of_index, right_states_of_index); // works together with prepare_functions()
 			type_of_final_center = std::move(right.type_of_final_center);
 			this->left = std::move(left.DFA);
 			this->right = std::move(right.A_R).getMFSA();
 		}
 
 		pseudo_minimize(left_states_of_index, right_states_of_index, index_of_left_state, index_of_right_state);
-		prepare_functions();
-
-		// use when pseudo_minimize() is disabled; works together with construct_functions()
-		/*tau.prepare({left_classes.size() - 1, right_classes.size() - 1});
-		psi_tau.prepare({left_classes.size() - 1, right_classes.size() - 1});
-		delta.prepare({q_err, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), right_classes.size() - 1});
-		psi_delta.prepare({q_err, std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), right_classes.size() - 1});*/
 
 		//debug
-		/*std::cerr << "after minimization:\n";
-		this->left.print(std::cerr << "left:\n") << '\n';
-		this->right.print(std::cerr << "right:\n") << '\n';
-		std::cerr << "tau:\n" << tau << '\n';
-		std::cerr << "psi_tau:\n" << psi_tau << '\n';
-		std::cerr << "delta:\n" << delta << '\n';
-		std::cerr << "psi_delta:\n" << psi_delta << '\n';*/
+		/*this->left.print(std::cerr << "left:\n") << '\n';
+		this->right.print(std::cerr << "right:\n") << '\n';*/
 	}
 	Word operator()(const Word& input) const
 	{
 		std::vector<State> left_path = left.findPath(input), right_path = right.findPath(std::views::reverse(input));
-		auto left_path_range = left_path;//| std::views::transform([this](State l) { return index_of_left_state[l]; });
+		auto left_path_range = left_path;
 		auto left_path_it = left_path_range.begin();
-		auto right_path_rev_range = right_path | std::views::reverse; //| std::views::transform([this](State r) { return index_of_right_state[r]; });
+		auto right_path_rev_range = right_path | std::views::reverse;
 		auto right_path_rev_it = right_path_rev_range.begin();
 
 		Word output;
 		State curr/* = q_err*/;
-		//std::cerr << "path:\n" << q_err << '\n';
-		curr = tau(*left_path_it, *right_path_rev_it, q_err);
-		output += psi_tau(*left_path_it++, *right_path_rev_it++, {});
-		//std::cerr << curr << '\n';
+		curr = value_or(tau, {*left_path_it, *right_path_rev_it}, q_err);
+		if(auto it = psi_tau.find({*left_path_it++, *right_path_rev_it++}); it != psi_tau.end())
+			output += it->second;
 		for(Symbol s : input)
 		{
-			State next = delta(curr, s, *right_path_rev_it, q_err);
-			//std::cerr << next << '\n';
-			output += psi_delta(curr, s, *right_path_rev_it, {s});
+			State next = value_or(delta, {curr, s, *right_path_rev_it}, q_err);
+			output += value_or(psi_delta, {curr, s, *right_path_rev_it}, {s});
 			if(next == q_err || type_of_final_center.contains(next))
 			{
-				curr = tau(*left_path_it, *right_path_rev_it, q_err);
+				curr = value_or(tau, {*left_path_it, *right_path_rev_it}, q_err);
 				if(curr == q_err)
-					output += psi_tau(*left_path_it, *right_path_rev_it, {});
+					if(auto it = psi_tau.find({*left_path_it, *right_path_rev_it}); it != psi_tau.end())
+						output += it->second;
 			}
 			else
 				curr = next;
 			++left_path_it;
 			++right_path_rev_it;
-			//std::cerr << curr << '\n';
 		}
 		return output;
 	}

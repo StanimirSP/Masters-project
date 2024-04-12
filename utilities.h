@@ -14,7 +14,57 @@
 #include <map>
 #include <vector>
 #include <functional>
+#include <tuple>
 #include "constants.h"
+
+namespace hash_tuple
+{
+	template<class T>
+	struct hash
+	{
+		std::size_t operator()(const T& value) const
+		{
+			return std::hash<T>{}(value);
+		}
+	};
+
+	class hash_combine
+	{
+		std::size_t seed;
+	public:
+		hash_combine(std::size_t seed = 0): seed(seed) {}
+		template<class T>
+		hash_combine& operator,(const T& value)
+		{
+			// algorithm taken from boost::hash_combine
+			seed ^= (hash<T>{}(value)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+			return *this;
+		}
+		explicit operator std::size_t() const noexcept
+		{
+			return seed;
+		}
+	};
+
+	template<class... Args>
+	struct hash<std::tuple<Args...>>
+	{
+		std::size_t operator()(const std::tuple<Args...>& value) const
+		{
+			return std::apply([](const auto&... args) {
+				return static_cast<std::size_t>((hash_combine{}, ..., args));
+			}, value);
+		}
+	};
+}
+
+template<class Map>
+inline typename Map::mapped_type value_or(const Map& cont, const typename Map::key_type& key, const typename Map::mapped_type& def)
+{
+	if(auto it = cont.find(key); it != cont.end())
+		return it->second;
+	return def;
+}
 
 template<class Compare = std::less<>>
 struct IndirectlyCompare
