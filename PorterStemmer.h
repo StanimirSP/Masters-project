@@ -10,6 +10,7 @@ namespace PorterStemmer
 {
 	inline const std::string alphabet = "abcdefghijklmnopqrstuvwxyz \r\n\t\v\x01\x02";
 	inline const std::string letter = "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z)";
+	inline const std::string letter_not_s = "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|t|u|v|w|x|y|z)";
 	inline const std::string whitespace = "( |\r|\n|\t|\v)";
 	inline const std::string always_vowel = "(a|e|i|o|u)";
 	inline const std::string vowel_or_y = "(a|e|i|o|u|y)";
@@ -27,7 +28,7 @@ namespace PorterStemmer
 
 	inline const std::string m_gt_0 = "((" + C + VC + '|' + V_starting_non_y + C + ')' + VC + '*' + opt_V + ')';
 	inline const std::string m_gt_1 = "((" + C + VC + '|' + V_starting_non_y + C + ')' + VC + VC + '*' + opt_V + ')';
-	inline const std::string m_eq_1 = '(' + whitespace + '(' + C + VC + '|' + V_starting_non_y + C + ')' + opt_V + ')';
+	//inline const std::string m_eq_1 = '(' + whitespace + '(' + C + VC + '|' + V_starting_non_y + C + ')' + opt_V + ')';
 	inline const std::string rctx = "\x02";
 
 	using namespace std::string_literals;
@@ -40,7 +41,7 @@ namespace PorterStemmer
 			{"[ies,i\x02]"s, "_"s, whitespace},							// IES  -> I
 			{"[ss,ss\x02]"s, /*"_"s*/ letter, whitespace},				// SS   -> SS
 			{"[s,\x02]"s, /*"_"s*/ letter + letter, whitespace},		// S    ->
-			{"[_,\x02]"s, letter + letter + "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|t|u|v|w|x|y|z)", whitespace},		// only allow words of length > 2 to be modified
+			{"[_,\x02]"s, letter + letter + letter_not_s, whitespace},		// only allow words of length > 2 to be modified
 		},
 		{ // 1b -- '\x01' is used as a marker for whether step 1b' should take place
 			{"[eed,ee]"s, m_gt_0, rctx},					// (m>0) EED -> EE

@@ -223,20 +223,23 @@ public:
 
 		pseudo_minimize(left_states_of_index, right_states_of_index, index_of_left_state, index_of_right_state);
 
-
 		//debug
-		//std::cerr << "size psi: " << psi.size() << '\n';
+		//std::cerr << "\t\tleft states: " << this->left.statesCnt << '\n';
+		//std::cerr << "\t\tleft transitions: " << this->left.transitions.buffer.size() << '\n';
+		//std::cerr << "\t\tright states: " << this->right.statesCnt << '\n';
+		//std::cerr << "\t\tright transitions: " << this->right.transitions.buffer.size() << '\n';
+		//std::cerr << "\t\tsize psi: " << psi.size() << '\n';
+		//std::cerr << "\t\tsize iota: " << iota.size() << '\n';
 		/*this->left.print(std::cerr << "left:\n") << '\n';
 		this->right.print(std::cerr << "right:\n") << '\n';*/
 	}
 	Word operator()(const Word& input) const
 	{
 		std::vector<State> right_path = right.findPath(std::ranges::reverse_view(input));
-		auto right_path_rev_range = right_path | std::views::reverse;
 
 		Word output;
 		State curr_left_st = *left.initial.begin();
-		for(auto right_path_rev_it = right_path_rev_range.begin(); Symbol s : input)
+		for(auto right_path_rev_it = right_path.rbegin(); Symbol s : input)
 		{
 			output += value_or(psi, {curr_left_st, s, *++right_path_rev_it}, {s});
 			curr_left_st = left.successor(curr_left_st, s);

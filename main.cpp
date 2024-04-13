@@ -199,8 +199,8 @@ int main(int argc, char** argv) try
 		std::cerr << "elapsed time for replacing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
 	}*/
 	{
-		std::vector<BimachineWithFinalOutput> bm;
-		//std::vector<TwostepBimachine> bm;
+		//std::vector<BimachineWithFinalOutput> bm;
+		std::vector<TwostepBimachine> bm;
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		{
 			auto start = std::chrono::steady_clock::now();

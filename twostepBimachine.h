@@ -543,20 +543,25 @@ public:
 			this->left = std::move(left.DFA);
 			this->right = std::move(right.A_R).getMFSA();
 		}
-
 		pseudo_minimize(left_states_of_index, right_states_of_index, index_of_left_state, index_of_right_state);
 
 		//debug
+		//std::cerr << "\t\tleft states: " << this->left.statesCnt << '\n';
+		//std::cerr << "\t\tleft transitions: " << this->left.transitions.buffer.size() << '\n';
+		//std::cerr << "\t\tright states: " << this->right.statesCnt << '\n';
+		//std::cerr << "\t\tright transitions: " << this->right.transitions.buffer.size() << '\n';
+		//std::cerr << "\t\tsize delta: " << delta.size() << '\n';
+		//std::cerr << "\t\tsize psi_delta: " << psi_delta.size() << '\n';
+		//std::cerr << "\t\tsize tau: " << tau.size() << '\n';
+		//std::cerr << "\t\tsize psi_tau: " << psi_tau.size() << '\n';
 		/*this->left.print(std::cerr << "left:\n") << '\n';
 		this->right.print(std::cerr << "right:\n") << '\n';*/
 	}
 	Word operator()(const Word& input) const
 	{
 		std::vector<State> left_path = left.findPath(input), right_path = right.findPath(std::views::reverse(input));
-		auto left_path_range = left_path;
-		auto left_path_it = left_path_range.begin();
-		auto right_path_rev_range = right_path | std::views::reverse;
-		auto right_path_rev_it = right_path_rev_range.begin();
+		auto left_path_it = left_path.begin();
+		auto right_path_rev_it = right_path.rbegin();
 
 		Word output;
 		State curr/* = q_err*/;
