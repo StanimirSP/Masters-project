@@ -22,7 +22,7 @@ std::string readFromFile(const std::filesystem::path& path, char delim = '\n')
 	return str;
 }
 
-// g++ -Wall -pedantic-errors -O2 -std=c++23 -fdiagnostics-color=always *.cpp
+// g++ -Wall -pedantic-errors -O3 -std=c++23 -fdiagnostics-color=always *.cpp
 
 int main(int argc, char** argv) try
 {

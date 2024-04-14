@@ -1,5 +1,5 @@
-#ifndef TWOSTEPBIMACHINE_H
-#define TWOSTEPBIMACHINE_H
+#ifndef TWOSTEPBIMACHINE_HPP
+#define TWOSTEPBIMACHINE_HPP
 
 #include <vector>
 #include <tuple>

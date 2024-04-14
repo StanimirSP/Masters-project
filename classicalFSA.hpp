@@ -1,5 +1,5 @@
-#ifndef CLASSICALFSA_H
-#define CLASSICALFSA_H
+#ifndef CLASSICALFSA_HPP
+#define CLASSICALFSA_HPP
 
 #include <concepts>
 #include <map>

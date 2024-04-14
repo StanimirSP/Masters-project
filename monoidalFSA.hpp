@@ -1,5 +1,5 @@
-#ifndef MONOIDALFSA_H
-#define MONOIDALFSA_H
+#ifndef MONOIDALFSA_HPP
+#define MONOIDALFSA_HPP
 
 #include <cstddef>
 #include <vector>

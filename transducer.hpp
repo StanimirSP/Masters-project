@@ -1,5 +1,5 @@
-#ifndef TRANSDUCER_H
-#define TRANSDUCER_H
+#ifndef TRANSDUCER_HPP
+#define TRANSDUCER_HPP
 
 #include <concepts>
 #include <cstddef>

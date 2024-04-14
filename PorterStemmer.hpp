@@ -1,5 +1,5 @@
-#ifndef PORTERSTEMMER_H
-#define PORTERSTEMMER_H
+#ifndef PORTERSTEMMER_HPP
+#define PORTERSTEMMER_HPP
 
 #include <vector>
 #include <string>

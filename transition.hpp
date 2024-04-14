@@ -1,5 +1,5 @@
-#ifndef TRANSITION_H
-#define TRANSITION_H
+#ifndef TRANSITION_HPP
+#define TRANSITION_HPP
 
 #include <utility>
 #include <vector>

@@ -1,5 +1,5 @@
-#ifndef CLASSICAL_BIMACHINE
-#define CLASSICAL_BIMACHINE
+#ifndef CLASSICAL_BIMACHINE_HPP
+#define CLASSICAL_BIMACHINE_HPP
 
 #include <vector>
 #include <cstdint>

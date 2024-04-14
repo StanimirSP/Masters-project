@@ -1,5 +1,5 @@
-#ifndef REGULAREXPRESSION_H
-#define REGULAREXPRESSION_H
+#ifndef REGULAREXPRESSION_HPP
+#define REGULAREXPRESSION_HPP
 
 #include <cstddef>
 #include <stdexcept>
