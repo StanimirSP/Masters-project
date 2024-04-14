@@ -1,15 +1,15 @@
 #ifndef CONTEXTUALREPLACEMENTRULE_H
 #define CONTEXTUALREPLACEMENTRULE_H
 
-#include "regularExpression.h"
-#include "classicalFSA.h"
-#include "transducer.h"
-#include "ThompsonsConstruction.h"
 #include <iostream>
 #include <iomanip>
 #include <string>
 #include <unordered_set>
 #include <optional>
+#include "regularExpression.hpp"
+#include "classicalFSA.hpp"
+#include "transducer.hpp"
+#include "ThompsonsConstruction.hpp"
 
 struct ContextualReplacementRule
 {

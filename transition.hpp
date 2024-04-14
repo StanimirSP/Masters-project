@@ -1,8 +1,6 @@
 #ifndef TRANSITION_H
 #define TRANSITION_H
 
-#include "constants.h"
-#include "regularExpression.h"
 #include <utility>
 #include <vector>
 #include <algorithm>
@@ -14,6 +12,8 @@
 #include <limits>
 #include <ranges>
 #include <compare>
+#include "constants.hpp"
+#include "regularExpression.hpp"
 
 template<class LabelType>
 struct Transition

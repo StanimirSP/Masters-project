@@ -1,6 +1,6 @@
-#include "constants.h"
 #include <limits>
 #include <stdexcept>
+#include "constants.hpp"
 
 namespace Constants
 {

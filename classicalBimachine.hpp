@@ -6,10 +6,10 @@
 #include <utility>
 #include <map>
 #include <unordered_map>
-#include "twostepBimachine.h"
-#include "classicalFSA.h"
-#include "monoidalFSA.h"
-#include "utilities.h"
+#include "twostepBimachine.hpp"
+#include "classicalFSA.hpp"
+#include "monoidalFSA.hpp"
+#include "utilities.hpp"
 
 #if __has_include(<boost/unordered/unordered_flat_map.hpp>)
 #	include <boost/unordered/unordered_flat_map.hpp>

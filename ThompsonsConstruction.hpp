@@ -1,12 +1,12 @@
 #ifndef THOMPSONSCONSTRUCTION_H
 #define THOMPSONSCONSTRUCTION_H
 
-#include "constants.h"
-#include "monoidalFSA.h"
-#include "regularExpression.h"
 #include <vector>
 #include <stack>
 #include <utility>
+#include "constants.hpp"
+#include "monoidalFSA.hpp"
+#include "regularExpression.hpp"
 
 template<class LabelType>
 struct ThompsonState;

@@ -15,7 +15,7 @@
 #include <vector>
 #include <functional>
 #include <tuple>
-#include "constants.h"
+#include "constants.hpp"
 
 namespace hash_tuple
 {

@@ -11,15 +11,14 @@
 #include <cstddef>
 #include <vector>
 #include <string_view>
-#include "monoidalFSA.h"
-#include "transition.h"
-#include "constants.h"
+#include "monoidalFSA.hpp"
+#include "transition.hpp"
+#include "constants.hpp"
 
 class ClassicalFSA: public MonoidalFSA<SymbolOrEpsilon>
 {
 	template<bool, class>
 	friend class Transducer;
-	friend class Bimachine;
 	friend class TSBM_LeftAutomaton;
 	friend class TSBM_RightAutomaton;
 	friend class TwostepBimachine;

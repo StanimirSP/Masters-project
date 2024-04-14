@@ -9,8 +9,8 @@
 #include <string_view>
 #include <vector>
 #include <algorithm>
-#include "constants.h"
-#include "utilities.h"
+#include "constants.hpp"
+#include "utilities.hpp"
 
 #define NDEBUG
 

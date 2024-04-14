@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include <cstddef>
-#include "contextualReplacementRule.h"
+#include "contextualReplacementRule.hpp"
 
 namespace PorterStemmer
 {

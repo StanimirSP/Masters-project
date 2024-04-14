@@ -17,9 +17,9 @@
 #include <array>
 #include <iterator>
 #include <cstdint>
-#include "constants.h"
-#include "transition.h"
-#include "regularExpression.h"
+#include "constants.hpp"
+#include "transition.hpp"
+#include "regularExpression.hpp"
 
 template<class LabelType>
 class MonoidalFSA;
@@ -86,7 +86,6 @@ protected:
 	std::unordered_map<Symbol, std::uint32_t> alphabetOrder;
 
 	friend MonoidalFSA<LabelType> regexToMFSA<>(RegularExpression<LabelType> re, const std::string& alphabet);
-	friend class Bimachine;
 	friend class TSBM_LeftAutomaton;
 	friend class TSBM_RightAutomaton;
 	template<class, class>

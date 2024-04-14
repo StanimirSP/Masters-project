@@ -9,10 +9,10 @@
 #include <type_traits>
 #include <unordered_set>
 #include <string>
-#include "constants.h"
-#include "monoidalFSA.h"
-#include "classicalFSA.h"
-#include "transition.h"
+#include "constants.hpp"
+#include "monoidalFSA.hpp"
+#include "classicalFSA.hpp"
+#include "transition.hpp"
 
 template<bool IsLetterType = false, class Label = WordPair>
 class Transducer: public MonoidalFSA<std::conditional_t<IsLetterType, SymbolPair, Label>>

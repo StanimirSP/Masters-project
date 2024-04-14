@@ -15,9 +15,9 @@
 #include <limits>
 #include <concepts>
 #include <functional>
-#include "classicalFSA.h"
-#include "contextualReplacementRule.h"
-#include "utilities.h"
+#include "classicalFSA.hpp"
+#include "contextualReplacementRule.hpp"
+#include "utilities.hpp"
 
 #if __has_include(<boost/unordered/unordered_flat_map.hpp>)
 #	include <boost/unordered/unordered_flat_map.hpp>

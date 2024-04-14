@@ -4,13 +4,13 @@
 #include <string>
 #include <filesystem>
 #include <chrono>
-#include "regularExpression.h"
-#include "ThompsonsConstruction.h"
-#include "transducer.h"
-#include "contextualReplacementRule.h"
-#include "twostepBimachine.h"
-#include "classicalBimachine.h"
-#include "PorterStemmer.h"
+#include "regularExpression.hpp"
+#include "ThompsonsConstruction.hpp"
+#include "transducer.hpp"
+#include "contextualReplacementRule.hpp"
+#include "twostepBimachine.hpp"
+#include "classicalBimachine.hpp"
+#include "PorterStemmer.hpp"
 
 std::string readFromFile(const std::filesystem::path& path, char delim = '\n')
 {
