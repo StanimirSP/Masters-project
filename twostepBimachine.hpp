@@ -374,7 +374,7 @@ class TwostepBimachine
 	std::unordered_map<std::tuple<State, State>, Word, hash_tuple::hash<std::tuple<State, State>>> psi_tau;
 #endif
 	State q_err;
-	std::unordered_map<State, std::uint32_t> type_of_final_center;
+	std::unordered_set<State> final_center;
 
 	void construct_functions(const TSBM_LeftAutomaton& left, const TSBM_RightAutomaton& right,
 							 const auto& left_classes, const auto& right_classes,
@@ -539,7 +539,8 @@ public:
 			q_err = right.A_T.statesCnt;
 			right.A_T.transitions.sort(right.A_T.statesCnt); // needed for calling calculate_mu
 			construct_functions(left, right, left_classes, right_classes, batch);
-			type_of_final_center = std::move(right.type_of_final_center);
+			for(const auto& [st, _] : right.type_of_final_center)
+				final_center.insert(st);
 			this->left = std::move(left.DFA);
 			this->right = std::move(right.A_R).getMFSA();
 		}
@@ -554,6 +555,7 @@ public:
 		//std::cerr << "\t\tsize psi_delta: " << psi_delta.size() << '\n';
 		//std::cerr << "\t\tsize tau: " << tau.size() << '\n';
 		//std::cerr << "\t\tsize psi_tau: " << psi_tau.size() << '\n';
+		//std::cerr << "\t\tsize final_center: " << final_center.size() << '\n';
 		/*this->left.print(std::cerr << "left:\n") << '\n';
 		this->right.print(std::cerr << "right:\n") << '\n';*/
 	}
@@ -572,7 +574,7 @@ public:
 		{
 			State next = value_or(delta, {curr, s, *right_path_rev_it}, q_err);
 			output += value_or(psi_delta, {curr, s, *right_path_rev_it}, {s});
-			if(next == q_err || type_of_final_center.contains(next))
+			if(next == q_err || final_center.contains(next))
 			{
 				curr = value_or(tau, {*left_path_it, *right_path_rev_it}, q_err);
 				if(curr == q_err)
