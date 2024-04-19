@@ -47,7 +47,7 @@ struct Transition
 	{
 		return os << tr.From() << ' ' << tr.Label() << ' ' << tr.To();
 	}
-	friend std::istream& operator>>(std::istream& is, Transition& tr) // !!! will not work if label is whitespace
+	friend std::istream& operator>>(std::istream& is, Transition& tr)
 	{
 		return is >> tr.from >> tr.label >> tr.to;
 	}

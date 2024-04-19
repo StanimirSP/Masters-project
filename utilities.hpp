@@ -197,22 +197,34 @@ inline std::ostream & operator<<(std::ostream & os, const WordPair & wp) // ["a"
 
 inline std::istream& operator>>(std::istream& is, SymbolOrEpsilon& s) // a
 {
-	return is >> s.c;
+	auto old_flags = is.flags();
+	is >> std::noskipws >> s.c;
+	is.flags(old_flags);
+	return is;
 }
 inline std::istream& operator>>(std::istream& is, SymbolPair& sp) // [a,b]
 {
 	char ignore;
-	return is >> ignore >> sp.coords[0] >> ignore >> sp.coords[1] >> ignore;
+	auto old_flags = is.flags();
+	is >> std::noskipws >> ignore >> sp.coords[0] >> ignore >> sp.coords[1] >> ignore;
+	is.flags(old_flags);
+	return is;
 }
 inline std::istream& operator>>(std::istream& is, Symbol_Word& sw)
 {
 	char ignore;
-	return is >> ignore >> sw.first >> ignore >> std::quoted(sw.second) >> ignore;
+	auto old_flags = is.flags();
+	is >> std::noskipws >> ignore >> sw.first >> ignore >> std::quoted(sw.second) >> ignore;
+	is.flags(old_flags);
+	return is;
 }
 inline std::istream& operator>>(std::istream& is, WordPair& wp) // ["a","b"]
 {
 	char ignore;
-	return is >> ignore >> std::quoted(wp.coords[0]) >> ignore >> std::quoted(wp.coords[1]) >> ignore;
+	auto old_flags = is.flags();
+	is >> std::noskipws >> ignore >> std::quoted(wp.coords[0]) >> ignore >> std::quoted(wp.coords[1]) >> ignore;
+	is.flags(old_flags);
+	return is;
 }
 
 #endif
