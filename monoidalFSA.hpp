@@ -25,7 +25,7 @@ template<class LabelType>
 class MonoidalFSA;
 
 template<class LabelType>
-MonoidalFSA<LabelType> regexToMFSA(RegularExpression<LabelType> re, const std::string& alphabet);
+MonoidalFSA<LabelType> regexToMFSA(const RegularExpression<LabelType>& re, const std::string& alphabet);
 
 namespace Internal
 {
@@ -85,7 +85,7 @@ protected:
 	std::vector<Symbol> alphabet;
 	std::unordered_map<Symbol, std::uint32_t> alphabetOrder;
 
-	friend MonoidalFSA<LabelType> regexToMFSA<>(RegularExpression<LabelType> re, const std::string& alphabet);
+	friend MonoidalFSA<LabelType> regexToMFSA<>(const RegularExpression<LabelType>& re, const std::string& alphabet);
 	friend class TSBM_LeftAutomaton;
 	friend class TSBM_RightAutomaton;
 	template<class, class>

@@ -71,11 +71,11 @@ public:
 					res.emplace_back(i, std::move(tr.label), tr.indNext);
 		return res;
 	}
-	friend MonoidalFSA<LabelType> regexToMFSA<>(RegularExpression<LabelType> re, const std::string& alphabet);
+	friend MonoidalFSA<LabelType> regexToMFSA<>(const RegularExpression<LabelType>& re, const std::string& alphabet);
 };
 
 template<class LabelType>
-ThompsonAutomaton<LabelType> ThompsonConstruction(RegularExpression<LabelType>&& re, std::vector<ThompsonState<LabelType>>& stateBuffer)
+ThompsonAutomaton<LabelType> ThompsonConstruction(const RegularExpression<LabelType>& re, std::vector<ThompsonState<LabelType>>& stateBuffer)
 {
 	stateBuffer.clear();
 	stateBuffer.reserve(2 * re.TokenizedReversePolishNotation().size());
@@ -122,10 +122,10 @@ ThompsonAutomaton<LabelType> ThompsonConstruction(RegularExpression<LabelType>&&
 }
 
 template<class LabelType>
-MonoidalFSA<LabelType> regexToMFSA(RegularExpression<LabelType> re, const std::string& alphabet)
+MonoidalFSA<LabelType> regexToMFSA(const RegularExpression<LabelType>& re, const std::string& alphabet)
 {
 	std::vector<ThompsonState<LabelType>> stateBuffer;
-	const ThompsonAutomaton<LabelType> Thompson = ThompsonConstruction(std::move(re), stateBuffer);
+	const ThompsonAutomaton<LabelType> Thompson = ThompsonConstruction(re, stateBuffer);
 	MonoidalFSA<LabelType> res;
 	res.statesCnt = stateBuffer.size();
 	res.initial.insert(Thompson.indStart);
