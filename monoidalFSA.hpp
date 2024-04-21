@@ -84,7 +84,7 @@ protected:
 	std::unordered_set<State> initial, final;
 	std::vector<Symbol> alphabet;
 	std::unordered_map<Symbol, std::uint32_t> alphabetOrder;
-
+private:
 	friend MonoidalFSA<LabelType> regexToMFSA<>(const RegularExpression<LabelType>& re, const std::string& alphabet);
 	friend class TSBM_LeftAutomaton;
 	friend class TSBM_RightAutomaton;
@@ -116,13 +116,6 @@ protected:
 		for(State init : initial)
 			BFS(init, appendToClosure, isEpsTransition);
 		initial.insert(epsClosure.begin(), epsClosure.end());
-	}
-	bool containsFinalState(const std::set<State>& set) const
-	{
-		for(State st : set)
-			if(final.contains(st))
-				return true;
-		return false;
 	}
 	// precondition: transitions must be sorted by Label
 	virtual std::vector<LabelType> findPseudoAlphabet() const
@@ -158,6 +151,7 @@ protected:
 				remapped.insert(map[st]);
 		return remapped;
 	}
+protected:
 	void alphabetUnion(Symbol s)
 	{
 		if(alphabetOrder.emplace(s, alphabet.size()).second)
@@ -168,7 +162,14 @@ protected:
 		for(Symbol s : rhs.alphabet)
 			alphabetUnion(s);
 	}
-
+	bool containsFinalState(const std::set<State>& set) const
+	{
+		for(State st : set)
+			if(final.contains(st))
+				return true;
+		return false;
+	}
+public:
 	// *this must be deterministic and total, otherwise the behavior is undefined
 	// color_of[i] == j <=> state i belongs to equivalence class j
 	MonoidalFSA& coloredPseudoMinimize(std::size_t colors_cnt, std::vector<State>& color_of, const std::vector<LabelType>& pseudoAlphabet)
@@ -269,7 +270,6 @@ protected:
 		transitions = std::move(newTransitions);
 		return *this;
 	}
-public:
 	MonoidalFSA& removeEpsilon()
 	{
 		transitions.sort(statesCnt);
