@@ -122,7 +122,7 @@ struct SymbolOrEpsilon
 
 struct SymbolPair
 {
-	SymbolOrEpsilon coords[2];
+	SymbolOrEpsilon first, second;
 	static constexpr SymbolPair epsilon() { return {}; }
 	auto operator<=>(const SymbolPair&) const noexcept = default;
 	bool operator==(const SymbolPair&) const noexcept = default;
@@ -135,8 +135,8 @@ inline void normalize(Word& w)
 
 struct WordPair
 {
-	Word coords[2];
-	constexpr WordPair(): coords{Word(1, Constants::Epsilon)/*, Word(1, Constants::Epsilon)*/} {}
+	Word first, second;
+	constexpr WordPair(): first{Constants::Epsilon}/* , second{Constants::Epsilon} */ {}
 	constexpr WordPair(std::string_view wp)
 	{
 		wp.remove_prefix(1); // Constants::BaseElementBegin
@@ -144,12 +144,12 @@ struct WordPair
 		std::size_t delimPos = wp.find(Constants::BaseElementDelim);
 		if(delimPos == std::string_view::npos)
 			throw std::runtime_error("Bad regular expression: missing delimiter in base element");
-		coords[0] = wp.substr(0, delimPos);
-		coords[1] = wp.substr(delimPos + 1);
-		if(coords[0].empty() || coords[1].empty() || coords[1].find(Constants::BaseElementDelim) != std::string::npos)
+		first = wp.substr(0, delimPos);
+		second = wp.substr(delimPos + 1);
+		if(first.empty() || second.empty() || second.find(Constants::BaseElementDelim) != std::string::npos)
 			throw std::runtime_error("Bad regular expression: missing coordinate in base element or there are extra delimiters");
-		//normalize(coords[0]);
-		normalize(coords[1]);
+		//normalize(first);
+		normalize(second);
 	}
 	static constexpr WordPair epsilon() { return {}; }
 	static constexpr bool isBegin(Symbol c) noexcept
@@ -166,7 +166,7 @@ struct WordPair
 	SymbolPair operator()(std::size_t ind) const noexcept
 	{
 		auto proj = [](const Word& w, std::size_t ind) -> Symbol { return ind < w.size() ? w[ind] : Constants::Epsilon; };
-		return {proj(coords[0], ind), proj(coords[1], ind)};
+		return {proj(first, ind), proj(second, ind)};
 	}
 };
 
@@ -184,7 +184,7 @@ struct Symbol_Word
 
 inline std::ostream& operator<<(std::ostream& os, const SymbolPair& sp) // [a,b]
 {
-	return os << Constants::BaseElementBegin << sp.coords[0] << Constants::BaseElementDelim << sp.coords[1] << Constants::BaseElementEnd;
+	return os << Constants::BaseElementBegin << sp.first << Constants::BaseElementDelim << sp.second << Constants::BaseElementEnd;
 }
 inline std::ostream& operator<<(std::ostream& os, const Symbol_Word& sw) // [a,"b"]
 {
@@ -192,7 +192,7 @@ inline std::ostream& operator<<(std::ostream& os, const Symbol_Word& sw) // [a,"
 }
 inline std::ostream & operator<<(std::ostream & os, const WordPair & wp) // ["a","b"]
 {
-	return os << Constants::BaseElementBegin << std::quoted(wp.coords[0]) << Constants::BaseElementDelim << std::quoted(wp.coords[1]) << Constants::BaseElementEnd;
+	return os << Constants::BaseElementBegin << std::quoted(wp.first) << Constants::BaseElementDelim << std::quoted(wp.second) << Constants::BaseElementEnd;
 }
 
 inline std::istream& operator>>(std::istream& is, SymbolOrEpsilon& s) // a
@@ -206,7 +206,7 @@ inline std::istream& operator>>(std::istream& is, SymbolPair& sp) // [a,b]
 {
 	char ignore;
 	auto old_flags = is.flags();
-	is >> std::noskipws >> ignore >> sp.coords[0] >> ignore >> sp.coords[1] >> ignore;
+	is >> std::noskipws >> ignore >> sp.first >> ignore >> sp.second >> ignore;
 	is.flags(old_flags);
 	return is;
 }
@@ -222,7 +222,7 @@ inline std::istream& operator>>(std::istream& is, WordPair& wp) // ["a","b"]
 {
 	char ignore;
 	auto old_flags = is.flags();
-	is >> std::noskipws >> ignore >> std::quoted(wp.coords[0]) >> ignore >> std::quoted(wp.coords[1]) >> ignore;
+	is >> std::noskipws >> ignore >> std::quoted(wp.first) >> ignore >> std::quoted(wp.second) >> ignore;
 	is.flags(old_flags);
 	return is;
 }

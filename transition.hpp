@@ -183,9 +183,9 @@ inline void sortByLabel(TransitionList<SymbolOrEpsilon>& list)
 template<>
 inline void sortByLabel(TransitionList<SymbolPair>& list)
 {
-	auto trLabelSecond = [](const Transition<SymbolPair>& tr) { return tr.Label().coords[1]; };
+	auto trLabelSecond = [](const Transition<SymbolPair>& tr) { return tr.Label().second; };
 	list.sort(std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), trLabelSecond);
-	auto trLabelFirst = [](const Transition<SymbolPair>& tr) { return tr.Label().coords[0]; };
+	auto trLabelFirst = [](const Transition<SymbolPair>& tr) { return tr.Label().first; };
 	list.sort(std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), trLabelFirst);
 }
 
@@ -195,7 +195,7 @@ inline void sortByLabelDomain(TransitionList<LabelType>& list) = delete;
 template<>
 inline void sortByLabelDomain(TransitionList<SymbolPair>& list)
 {
-	auto trLabelFirst = [](const Transition<SymbolPair>& tr) { return tr.Label().coords[0]; };
+	auto trLabelFirst = [](const Transition<SymbolPair>& tr) { return tr.Label().first; };
 	list.sort(std::numeric_limits<std::make_unsigned_t<Symbol>>::max(), trLabelFirst);
 }
 
