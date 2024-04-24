@@ -478,12 +478,12 @@ public:
 	MonoidalFSA& toLeftSimple(bool preserve_epsilon_in_language = true)
 	{
 		removeEpsilon();
-		// transitions are always sorted after removeEpsilon()
+		transitions.sort(statesCnt);
 		for(State init : initial)
 		{
 			auto span = transitions(init);
 			std::size_t start = std::distance(std::as_const(transitions.buffer).data(), span.data()),
-				end = start + span.size(); // save the indices in transitions.buffer because emplace_back may cause reallocations and invalidate the span
+				end = start + span.size(); // save the indices of the range because emplace_back may cause reallocations and invalidate the span
 			for(std::size_t i = start; i < end; i++)
 			{
 				const auto &tr = transitions.buffer[i];
@@ -501,7 +501,6 @@ public:
 	{
 		removeEpsilon();
 		transitions.isSorted = false;
-		//for(const auto& tr : transitions.buffer)
 		for(std::size_t i = 0, n = transitions.buffer.size(); i < n; i++)
 		{
 			const auto &tr = transitions.buffer[i];
@@ -521,10 +520,8 @@ public:
 		removeEpsilon();
 		transitions.isSorted = false;
 		State newInitial = statesCnt++, newFinal = statesCnt++;
-		//for(const auto& tr : transitions.buffer)
 		for(std::size_t i = 0, n = transitions.buffer.size(); i < n; i++)
 		{
-			// const auto &tr = transitions.buffer[i]; // bad! reallocation may occur after the first emplace_back
 			if(initial.contains(transitions.buffer[i].From()))
 			{
 				transitions.buffer.emplace_back(newInitial, transitions.buffer[i].Label(), transitions.buffer[i].To());
