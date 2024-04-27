@@ -234,8 +234,7 @@ public:
 		std::queue<const State_t*> q;
 		q.push(A_R.states.back());
 
-		State_t nextStates[std::numeric_limits<USymbol>::max() + 1]; // not good if USymbol is later changed to a larger type
-																	 // then this may cause stack overflow
+		std::unordered_map<Symbol, State_t> nextStates;
 		for(State step = 0; !q.empty(); step++)
 		{
 			const State_t& currState = *q.front();
@@ -243,11 +242,11 @@ public:
 
 			for(State st : currState.g)
 				for(const auto& tr : A_T.transitions(st))
-					addSuccessor_g(nextStates[static_cast<USymbol>(tr.Label().first)], tr.To());
+					addSuccessor_g(nextStates[tr.Label().first], tr.To());
 
 			for(State st : currState.R)
 				for(const auto& tr : A_rho.transitions(st))
-					addSuccessor_R(nextStates[static_cast<USymbol>(tr.Label())], tr.To());
+					addSuccessor_R(nextStates[tr.Label()], tr.To());
 
 			for(USymbol letter : A_rho.alphabet)
 			{

@@ -184,8 +184,6 @@ public:
 		left.initial.insert(0);
 		left.transitions.startInd.push_back(0);
 
-		LeftState nextLeftStates[std::numeric_limits<USymbol>::max() + 1]; // not good if USymbol is later changed to a larger type
-																		   // then this may cause stack overflow
 		auto cmp_classes_lctx_then_phi = [&index_of_leftctx_state](const LeftState& a, const LeftState& b) {
 			if(auto cmp_cl_lctx = index_of_leftctx_state[a.lctx] <=> index_of_leftctx_state[b.lctx]; cmp_cl_lctx != 0)
 				return cmp_cl_lctx < 0;

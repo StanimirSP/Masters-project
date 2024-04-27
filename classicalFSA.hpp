@@ -3,11 +3,11 @@
 
 #include <concepts>
 #include <map>
+#include <unordered_map>
 #include <queue>
 #include <set>
 #include <unordered_set>
 #include <utility>
-#include <limits>
 #include <cstddef>
 #include <vector>
 #include <string_view>
@@ -43,8 +43,7 @@ class ClassicalFSA: public MonoidalFSA<SymbolOrEpsilon>
 		std::unordered_set<State> newFinal;
 		if(containsFinalState(*q.front()))
 			newFinal.insert(0);
-		std::set<State> nextSets[std::numeric_limits<USymbol>::max() + 1]; // not good if USymbol is later changed to a larger type
-																		   // then this may cause stack overflow
+		std::unordered_map<Symbol, std::set<State>> nextSets;
 		newTransitions.startInd.push_back(0);
 		for(State step = 0; !q.empty(); step++)
 		{
@@ -52,11 +51,12 @@ class ClassicalFSA: public MonoidalFSA<SymbolOrEpsilon>
 			q.pop();
 			for(State st : currSet)
 				for(const auto& tr : this->transitions(st))
-					nextSets[static_cast<USymbol>(tr.Label())].insert(tr.To());
-			for(USymbol letter : this->alphabet)
+					nextSets[tr.Label()].insert(tr.To());
+			for(Symbol letter : this->alphabet)
 			{
-				auto [it, inserted] = newStates.try_emplace(std::move(nextSets[letter]), this->statesCnt);
-				nextSets[letter].clear();
+				std::set<State>& next = nextSets[letter];
+				auto [it, inserted] = newStates.try_emplace(std::move(next), this->statesCnt);
+				next.clear();
 				if(inserted)
 				{
 					this->statesCnt++;
