@@ -567,8 +567,9 @@ public:
 		Word output;
 		State curr/* = q_err*/;
 		curr = value_or(tau, {*left_path_it, *right_path_rev_it}, q_err);
-		if(auto it = psi_tau.find({*left_path_it++, *right_path_rev_it++}); it != psi_tau.end())
-			output += it->second;
+		if(curr == q_err)
+			if(auto it = psi_tau.find({*left_path_it++, *right_path_rev_it++}); it != psi_tau.end())
+				output += it->second;
 		for(Symbol s : input)
 		{
 			State next = value_or(delta, {curr, s, *right_path_rev_it}, q_err);
