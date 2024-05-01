@@ -401,7 +401,7 @@ class TwostepBimachine
 			{
 				if(State init = nu(right, *rules_left_ctx_ok_ptr, *right_state_ptr); init != Constants::InvalidState)
 					tau[{left_ind, right_ind}] = init;
-				if(std::uint32_t rule = minJ(right, batch, *rules_left_ctx_ok_ptr, *right_state_ptr);
+				else if(std::uint32_t rule = minJ(right, batch, *rules_left_ctx_ok_ptr, *right_state_ptr);
 					rule != Constants::InvalidRule &&
 					!batch[rule].output_for_epsilon->empty() // do not insert elements which represent empty output to optimize psi_tau for size
 				)
