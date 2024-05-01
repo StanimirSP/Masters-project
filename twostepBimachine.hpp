@@ -500,6 +500,14 @@ class TwostepBimachine
 		right.transitions.sort(right.statesCnt); // same as above but for the right automaton
 		update_functions(color_of_left, color_of_right, left_states_of_index, right_states_of_index);
 	}
+	State epsilon_jump(State left, State right, Word& output) const
+	{
+		State curr = value_or(tau, {left, right}, q_err);
+		if(curr == q_err)
+			if(auto it = psi_tau.find({left, right}); it != psi_tau.end())
+				output += it->second;
+		return curr;
+	}
 public:
 	static State nu(const TSBM_RightAutomaton & right, const std::ranges::forward_range auto & rules_left_ctx_ok, const TSBM_RightAutomaton::State_t & right_state)
 	{
@@ -566,25 +574,22 @@ public:
 
 		Word output;
 		State curr/* = q_err*/;
-		curr = value_or(tau, {*left_path_it, *right_path_rev_it}, q_err);
-		if(curr == q_err)
-			if(auto it = psi_tau.find({*left_path_it++, *right_path_rev_it++}); it != psi_tau.end())
-				output += it->second;
+		curr = epsilon_jump(*left_path_it, *right_path_rev_it, output);
 		for(Symbol s : input)
 		{
-			State next = value_or(delta, {curr, s, *right_path_rev_it}, q_err);
-			output += value_or(psi_delta, {curr, s, *right_path_rev_it}, {s});
-			if(next == q_err || final_center.contains(next))
+			State left = *++left_path_it;
+			State right = *++right_path_rev_it;
+			if(curr != q_err)
 			{
-				curr = value_or(tau, {*left_path_it, *right_path_rev_it}, q_err);
-				if(curr == q_err)
-					if(auto it = psi_tau.find({*left_path_it, *right_path_rev_it}); it != psi_tau.end())
-						output += it->second;
+				State next = value_or(delta, {curr, s, right}, q_err);
+				output += value_or(psi_delta, {curr, s, right}, {s});
+				curr = final_center.contains(next) ? epsilon_jump(left, right, output) : next;
 			}
 			else
-				curr = next;
-			++left_path_it;
-			++right_path_rev_it;
+			{
+				output += s;
+				curr = epsilon_jump(left, right, output);
+			}
 		}
 		return output;
 	}
