@@ -123,8 +123,8 @@ public:
 	// otherwise the behavior is undefined
 	State successor(State from, Symbol with) const
 	{
-		if(from >= statesCnt)
-			throw std::invalid_argument("cannot get successor: state 'from' is out of range");
+		/*if(from >= statesCnt)
+			throw std::invalid_argument("cannot get successor: state 'from' is out of range");*/
 		auto letterIndexIterator = alphabetOrder.find(with);
 		if(letterIndexIterator == alphabetOrder.end())
 			throw std::invalid_argument("cannot get successor: '" + std::string{with} + "' is not in the alphabet");
