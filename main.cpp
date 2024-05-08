@@ -113,9 +113,10 @@ int main(int argc, char** argv) try
 		const std::string alphabet = "axb";
 		std::vector<ContextualReplacementRule> rules{{"[ab,bbb]"s, "aa"s, "_"s},
 													 {"[b,z]"s, "b"s, "a"s},
-													 {"[a,_][a,_]*[_,x]|[_,y]"s, "aa"s, "_"s},
-													 //{"[a,x]*"s, "aaa*"s, "b|a"s},
+													 //{"[a,_][a,_]*[_,x]|[_,y]"s, "aa"s, "_"s},
+													 {"[a,x]*"s, "aaa*"s, "b|a"s},
 													 {"[_,c]"s, "_"s, "_"s},
+													 {"[bbbb,B]"s, "_"s, "_"s},
 		};
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		for(std::size_t i = 0; i < rules.size(); i++)
@@ -135,6 +136,8 @@ int main(int argc, char** argv) try
 		std::cout << tsbm("abaaaabaaaabba") << std::endl;
 		std::cout << tsbm("abaabaaaabba") << std::endl;
 		std::cout << tsbm("abaaabaaaabbaaaaaa") << std::endl;
+		std::cout << tsbm("bbbb") << std::endl;
+		std::cout << tsbm("bbbbb") << std::endl;
 
 		std::cout << "-----------------------\n";
 
@@ -146,6 +149,8 @@ int main(int argc, char** argv) try
 		std::cout << bmfo("abaaaabaaaabba") << std::endl;
 		std::cout << bmfo("abaabaaaabba") << std::endl;
 		std::cout << bmfo("abaaabaaaabbaaaaaa") << std::endl;
+		std::cout << bmfo("bbbb") << std::endl;
+		std::cout << bmfo("bbbbb") << std::endl;
 
 		std::cout << "=========================\n";
 	}*/
@@ -179,28 +184,32 @@ int main(int argc, char** argv) try
 		std::cout << "=========================\n";
 	}*/
 	/*{
+		using Resolution = std::chrono::microseconds;
 		auto start = std::chrono::steady_clock::now();
 		const std::string alphabet = "\n !\"'()*+,-./0123456789:;=?ABCDEFGHIJKLMNOPQRSTUVWXYZ[]abcdefghijklmnopqrstuvwxyz";
 		std::vector<ContextualReplacementRule> rules{{"[a,a]|[ability,ytiliba]|[able,elba]|[about,tuoba]|[above,evoba]|[accept,tpecca]|[according,gnidrocca]|[account,tnuocca]|[across,ssorca]|[act,tca]|[action,noitca]|[activity,ytivitca]|[actually,yllautca]|[add,dda]|[address,sserdda]|[administration,noitartsinimda]|[admit,timda]|[adult,tluda]|[affect,tceffa]|[after,retfa]|[again,niaga]|[against,tsniaga]|[age,ega]|[agency,ycnega]|[agent,tnega]|[ago,oga]|[agree,eerga]|[agreement,tnemeerga]|[ahead,daeha]|[air,ria]|[all,lla]|[allow,wolla]|[almost,tsomla]|[alone,enola]|[along,gnola]|[already,ydaerla]|[also,osla]|[although,hguohtla]|[always,syawla]|[American,naciremA]|[among,gnoma]|[amount,tnuoma]|[analysis,sisylana]|[and,dna]|[animal,lamina]|[another,rehtona]|[answer,rewsna]|[any,yna]|[anyone,enoyna]|[anything,gnihtyna]|[appear,raeppa]|[apply,ylppa]|[approach,hcaorppa]|[area,aera]|[argue,eugra]|[arm,mra]|[around,dnuora]|[arrive,evirra]|[art,tra]|[article,elcitra]|[artist,tsitra]|[as,sa]|[ask,ksa]|[assume,emussa]|[at,ta]|[attack,kcatta]|[attention,noitnetta]|[attorney,yenrotta]|[audience,ecneidua]|[author,rohtua]|[authority,ytirohtua]|[available,elbaliava]|[avoid,diova]|[away,yawa]|[baby,ybab]|[back,kcab]|[bad,dab]|[bag,gab]|[ball,llab]|[bank,knab]|[bar,rab]|[base,esab]|[be,eb]|[beat,taeb]|[beautiful,lufituaeb]|[because,esuaceb]|[become,emoceb]|[bed,deb]|[before,erofeb]|[begin,nigeb]|[behavior,roivaheb]|[behind,dniheb]|[believe,eveileb]|[benefit,tifeneb]|[best,tseb]|[better,retteb]|[between,neewteb]|[beyond,dnoyeb]|[big,gib]|[bill,llib]|[billion,noillib]|[bit,tib]|[black,kcalb]|[blood,doolb]|[blue,eulb]|[board,draob]|[body,ydob]|[book,koob]|[born,nrob]|[both,htob]|[box,xob]|[boy,yob]|[break,kaerb]|[bring,gnirb]|[brother,rehtorb]|[budget,tegdub]|[build,dliub]|[building,gnidliub]|[business,ssenisub]|[but,tub]|[buy,yub]|[by,yb]|[call,llac]|[camera,aremac]|[campaign,ngiapmac]|[can,nac]|[cancer,recnac]|[candidate,etadidnac]|[capital,latipac]|[car,rac]|[card,drac]|[care,erac]|[career,reerac]|[carry,yrrac]|[case,esac]|[catch,hctac]|[cause,esuac]|[cell,llec]|[center,retnec]|[central,lartnec]|[century,yrutnec]|[certain,niatrec]|[certainly,ylniatrec]|[chair,riahc]|[challenge,egnellahc]|[chance,ecnahc]|[change,egnahc]|[character,retcarahc]|[charge,egrahc]|[check,kcehc]|[child,dlihc]|[choice,eciohc]|[choose,esoohc]|[church,hcruhc]|[citizen,nezitic]|[city,ytic]|[civil,livic]|[claim,mialc]|[class,ssalc]|[clear,raelc]|[clearly,ylraelc]|[close,esolc]|[coach,hcaoc]|[cold,dloc]|[collection,noitcelloc]|[college,egelloc]|[color,roloc]|[come,emoc]|[commercial,laicremmoc]|[common,nommoc]|[community,ytinummoc]|[company,ynapmoc]|[compare,erapmoc]|[computer,retupmoc]|[concern,nrecnoc]|[condition,noitidnoc]|[conference,ecnerefnoc]|[Congress,ssergnoC]|[consider,redisnoc]|[consumer,remusnoc]|[contain,niatnoc]|[continue,eunitnoc]|[control,lortnoc]|[cost,tsoc]|[could,dluoc]|[country,yrtnuoc]|[couple,elpuoc]|[course,esruoc]|[court,truoc]|[cover,revoc]|[create,etaerc]|[crime,emirc]|[cultural,larutluc]|[culture,erutluc]|[cup,puc]|[current,tnerruc]|[customer,remotsuc]|[cut,tuc]|[dark,krad]|[data,atad]|[daughter,rethguad]|[day,yad]|[dead,daed]|[deal,laed]|[death,htaed]|[debate,etabed]|[decade,edaced]|[decide,ediced]|[decision,noisiced]|[deep,peed]|[defense,esnefed]"s, "_"s, "_"s},
 		};
+		//std::vector<ContextualReplacementRule> rules{{"[a,A]"s, "_"s, "_"s}, {"[_,-]"s, "_"s, "_"s}};
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		for(std::size_t i = 0; i < rules.size(); i++)
-		{
 			batch.emplace_back(rules[i], alphabet);
-		}
+		auto end_rep = std::chrono::steady_clock::now();
+		std::cerr << "elapsed time for creating FSR: " << std::chrono::duration_cast<Resolution>(end_rep - start) << "\n";
 		TwostepBimachine tsbm(batch);
 		auto end = std::chrono::steady_clock::now();
-		std::cerr << "elapsed time for construction: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
+		std::cerr << "\telapsed time for constructing the bimachine only: " << std::chrono::duration_cast<Resolution>(end - end_rep) << "\n";
+		std::cerr << "elapsed time for construction: " << std::chrono::duration_cast<Resolution>(end - start) << "\n";
 
 		start = std::chrono::steady_clock::now();
 		Word input = readFromFile("/dev/stdin", '\0');
 		std::cout << tsbm(input) << std::endl;
 		end = std::chrono::steady_clock::now();
-		std::cerr << "elapsed time for replacing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
+		std::cerr << "elapsed time for replacing: " << std::chrono::duration_cast<Resolution>(end - start) << "\n";
 	}*/
 	{
-		//std::vector<BimachineWithFinalOutput> bm;
-		std::vector<TwostepBimachine> bm;
+		using Resolution = std::chrono::milliseconds;
+		std::vector<BimachineWithFinalOutput> bm;
+		//std::vector<TwostepBimachine> bm;
 		std::vector<ContextualReplacementRuleRepresentation> batch;
 		{
 			auto start = std::chrono::steady_clock::now();
@@ -209,20 +218,23 @@ int main(int argc, char** argv) try
 				auto start = std::chrono::steady_clock::now();
 				for(std::size_t j = 0; j < PorterStemmer::steps[i].size(); j++)
 					batch.emplace_back(PorterStemmer::steps[i][j], PorterStemmer::alphabet);
+				auto end_rep = std::chrono::steady_clock::now();
+				std::cerr << "\telapsed time for creating FSR at step " << i << ": " << std::chrono::duration_cast<Resolution>(end_rep - start) << "\n";
 				bm.emplace_back(std::move(batch));
 				batch.clear();
 				auto end = std::chrono::steady_clock::now();
-				std::cerr << "\telapsed time for construction of step " << i << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
+				std::cerr << "\telapsed time for constructing the bimachine only at step " << i << ": " << std::chrono::duration_cast<Resolution>(end - end_rep) << "\n";
+				std::cerr << "\telapsed time for construction at step " << i << ": " << std::chrono::duration_cast<Resolution>(end - start) << "\n\n";
 			}
 			auto end = std::chrono::steady_clock::now();
-			std::cerr << "elapsed time for construction: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
+			std::cerr << "elapsed time for construction: " << std::chrono::duration_cast<Resolution>(end - start) << "\n";
 		}
 		Word input;
 		{
 			auto start = std::chrono::steady_clock::now();
 			input = readFromFile("/dev/stdin", '\0');
 			auto end = std::chrono::steady_clock::now();
-			std::cerr << "elapsed time for reading: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
+			std::cerr << "elapsed time for reading: " << std::chrono::duration_cast<Resolution>(end - start) << "\n";
 		}
 		{
 			auto start = std::chrono::steady_clock::now();
@@ -230,21 +242,17 @@ int main(int argc, char** argv) try
 			{
 				auto start = std::chrono::steady_clock::now();
 				input = bm[i](input);
-				// std::cerr << "{ ";
-				// for(int c : input)
-				// 	std::cerr << std::hex << c << ' ';
-				// std::cerr << "}\n";
 				auto end = std::chrono::steady_clock::now();
-				std::cerr << "\telapsed time for replacing at step " << i << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
+				std::cerr << "\telapsed time for replacing at step " << i << ": " << std::chrono::duration_cast<Resolution>(end - start) << "\n";
 			}
 			auto end = std::chrono::steady_clock::now();
-			std::cerr << "elapsed time for replacing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
+			std::cerr << "elapsed time for replacing: " << std::chrono::duration_cast<Resolution>(end - start) << "\n";
 		}
 		{
 			auto start = std::chrono::steady_clock::now();
 			std::cout << input;
 			auto end = std::chrono::steady_clock::now();
-			std::cerr << "elapsed time for printing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
+			std::cerr << "elapsed time for printing: " << std::chrono::duration_cast<Resolution>(end - start) << "\n";
 		}
 	}
 
