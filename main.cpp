@@ -51,7 +51,7 @@ int main(int argc, char** argv) try
 	Word input;
 	{
 		auto start = std::chrono::steady_clock::now();
-		input = readFromFile("/dev/stdin", '\0');
+		std::getline(std::cin, input, '\0');
 		auto end = std::chrono::steady_clock::now();
 		std::cerr << "elapsed time for reading: " << std::chrono::duration_cast<Resolution>(end - start) << "\n";
 	}
