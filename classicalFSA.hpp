@@ -1,28 +1,28 @@
-#ifndef CLASSICALFSA_H
-#define CLASSICALFSA_H
+#ifndef CLASSICALFSA_HPP
+#define CLASSICALFSA_HPP
 
 #include <concepts>
 #include <map>
+#include <unordered_map>
 #include <queue>
 #include <set>
 #include <unordered_set>
 #include <utility>
-#include <limits>
 #include <cstddef>
 #include <vector>
 #include <string_view>
-#include "monoidalFSA.h"
-#include "transition.h"
-#include "constants.h"
+#include "monoidalFSA.hpp"
+#include "transition.hpp"
+#include "constants.hpp"
 
 class ClassicalFSA: public MonoidalFSA<SymbolOrEpsilon>
 {
 	template<bool, class>
 	friend class Transducer;
-	friend class Bimachine;
 	friend class TSBM_LeftAutomaton;
 	friend class TSBM_RightAutomaton;
 	friend class TwostepBimachine;
+	friend class BimachineWithFinalOutput;
 
 	virtual std::vector<SymbolOrEpsilon> findPseudoAlphabet() const override
 	{
@@ -33,18 +33,17 @@ class ClassicalFSA: public MonoidalFSA<SymbolOrEpsilon>
 	{
 		if(!epsilonFree)
 			this->removeEpsilon().trim();
-		this->transitions.sort();
+		this->transitions.sort(this->statesCnt);
 		std::map<std::set<State>, State> newStates;
 		std::queue<const std::set<State>*> q;
 		newStates[std::set<State>(this->initial.begin(), this->initial.end())] = 0;
 		q.push(&newStates.begin()->first);
 		this->statesCnt = 1;
-		TransitionList<SymbolOrEpsilon> newTransitions{&this->statesCnt};
+		TransitionList<SymbolOrEpsilon> newTransitions;
 		std::unordered_set<State> newFinal;
 		if(containsFinalState(*q.front()))
 			newFinal.insert(0);
-		std::set<State> nextSets[std::numeric_limits<USymbol>::max() + 1]; // not good if USymbol is later changed to a larger type
-																		   // then this may cause stack overflow
+		std::unordered_map<Symbol, std::set<State>> nextSets;
 		newTransitions.startInd.push_back(0);
 		for(State step = 0; !q.empty(); step++)
 		{
@@ -52,11 +51,12 @@ class ClassicalFSA: public MonoidalFSA<SymbolOrEpsilon>
 			q.pop();
 			for(State st : currSet)
 				for(const auto& tr : this->transitions(st))
-					nextSets[static_cast<USymbol>(tr.Label())].insert(tr.To());
-			for(USymbol letter : this->alphabet)
+					nextSets[tr.Label()].insert(tr.To());
+			for(Symbol letter : this->alphabet)
 			{
-				auto [it, inserted] = newStates.try_emplace(std::move(nextSets[letter]), this->statesCnt);
-				nextSets[letter].clear();
+				std::set<State>& next = nextSets[letter];
+				auto [it, inserted] = newStates.try_emplace(std::move(next), this->statesCnt);
+				next.clear();
 				if(inserted)
 				{
 					this->statesCnt++;
@@ -121,20 +121,24 @@ public:
 
 	// *this must be deterministic, total and the transitions must be sorted by From() in ascending order, then by Label() according to alphabetOrder
 	// otherwise the behavior is undefined
+	State successor(State from, Symbol with) const
+	{
+		/*if(from >= statesCnt)
+			throw std::invalid_argument("cannot get successor: state 'from' is out of range");*/
+		auto letterIndexIterator = alphabetOrder.find(with);
+		if(letterIndexIterator == alphabetOrder.end())
+			throw std::invalid_argument("cannot get successor: '" + std::string{with} + "' is not in the alphabet");
+		return (transitions(from).begin() + letterIndexIterator->second)->To();
+	}
+	// *this must satisfy the precondition for calling 'successor'
 	std::vector<State> findPath(const std::ranges::forward_range auto& input) const
 	{
 		std::vector<State> path;
 		path.reserve(input.size() + 1);
-		State currSt = *this->initial.begin();
+		State currSt = *initial.begin();
 		path.push_back(currSt);
 		for(Symbol s : input)
-		{
-			auto letterIndexIterator = this->alphabetOrder.find(s);
-			if(letterIndexIterator == this->alphabetOrder.end())
-				throw std::runtime_error("input string contains '" + std::string{s} + "' which is not in the alphabet");
-			currSt = (this->transitions(currSt).begin() + letterIndexIterator->second)->To();
-			path.push_back(currSt);
-		}
+			path.push_back(currSt = successor(currSt, s));
 		return path;
 	}
 };

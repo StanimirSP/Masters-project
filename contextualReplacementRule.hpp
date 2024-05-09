@@ -1,15 +1,15 @@
-#ifndef CONTEXTUALREPLACEMENTRULE_H
-#define CONTEXTUALREPLACEMENTRULE_H
+#ifndef CONTEXTUALREPLACEMENTRULE_HPP
+#define CONTEXTUALREPLACEMENTRULE_HPP
 
-#include "regularExpression.h"
-#include "classicalFSA.h"
-#include "transducer.h"
-#include "ThompsonsConstruction.h"
 #include <iostream>
 #include <iomanip>
 #include <string>
 #include <unordered_set>
 #include <optional>
+#include "regularExpression.hpp"
+#include "classicalFSA.hpp"
+#include "transducer.hpp"
+#include "ThompsonsConstruction.hpp"
 
 struct ContextualReplacementRule
 {
@@ -40,8 +40,10 @@ struct ContextualReplacementRuleRepresentation
 		ClassicalFSA all = ClassicalFSA::createFromSymbolSet(alphabet).KleeneStar();
 		left = all.Concatenation(regexToMFSA(crr.lctx, alphabet)).pseudoMinimize().toRightSimple();
 		right = regexToMFSA(crr.rctx, alphabet).Concatenation(all).pseudoMinimize().toLeftSimple();
+		LetterTransducer center = Transducer(regexToMFSA(crr.center, alphabet)).expand();
+		center.pseudoMinimize();
 		std::unordered_set<Word> outputsForEpsilon;
-		center_rt = Transducer(regexToMFSA(crr.center, alphabet)).expand().realTime(&outputsForEpsilon).pseudoMinimize().toSimple();
+		center_rt = center.realTime(&outputsForEpsilon).toSimple();
 		if(outputsForEpsilon.size() > 1)
 			throw std::logic_error("crr.center does not represent a function");
 		if(!outputsForEpsilon.empty())

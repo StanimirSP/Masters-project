@@ -1,5 +1,5 @@
-#ifndef TRANSDUCER_H
-#define TRANSDUCER_H
+#ifndef TRANSDUCER_HPP
+#define TRANSDUCER_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -9,10 +9,10 @@
 #include <type_traits>
 #include <unordered_set>
 #include <string>
-#include "constants.h"
-#include "monoidalFSA.h"
-#include "classicalFSA.h"
-#include "transition.h"
+#include "constants.hpp"
+#include "monoidalFSA.hpp"
+#include "classicalFSA.hpp"
+#include "transition.hpp"
 
 template<bool IsLetterType = false, class Label = WordPair>
 class Transducer: public MonoidalFSA<std::conditional_t<IsLetterType, SymbolPair, Label>>
@@ -24,6 +24,7 @@ private:
 	template<bool, class>
 	friend class Transducer;
 	friend class TwostepBimachine;
+	friend class BimachineWithFinalOutput;
 
 	[[nodiscard]] ClassicalFSA project(std::invocable<LabelType> auto proj) &&
 		requires std::convertible_to<decltype(proj(std::declval<LabelType>())), SymbolOrEpsilon>
@@ -43,15 +44,15 @@ private:
 	TransitionList<Word> epsilonClosureTape1() const
 		requires IsLetterType
 	{
-		TransitionList<SymbolOrEpsilon> epsTape1{&this->statesCnt};
-		TransitionList<Word> closure{&this->statesCnt};
+		TransitionList<SymbolOrEpsilon> epsTape1;
+		TransitionList<Word> closure;
 		for(const auto& tr : this->transitions.buffer)
-			if(tr.Label().coords[0] == Constants::Epsilon)
+			if(tr.Label().first == Constants::Epsilon)
 			{
-				epsTape1.buffer.emplace_back(tr.From(), tr.Label().coords[1], tr.To());
-				closure.buffer.emplace_back(tr.From(), tr.Label().coords[1] == Constants::Epsilon ? Word{} : Word{tr.Label().coords[1]}, tr.To());
+				epsTape1.buffer.emplace_back(tr.From(), tr.Label().second, tr.To());
+				closure.buffer.emplace_back(tr.From(), tr.Label().second == Constants::Epsilon ? Word{} : Word{tr.Label().second}, tr.To());
 			}
-		epsTape1.sort();
+		epsTape1.sort(this->statesCnt);
 		for(std::size_t i = 0; i < closure.buffer.size(); i++)
 		{
 			const Transition<Word>& curr = closure.buffer[i];
@@ -67,12 +68,7 @@ private:
 public:
 	Transducer() = default;
 	Transducer(const MonoidalFSA<LabelType>& mFSA): MonoidalFSA<LabelType>(mFSA) {}
-	Transducer(MonoidalFSA<LabelType>&& mFSA): MonoidalFSA<LabelType>(std::move(mFSA))
-	{
-		/*if constexpr(std::is_same_v<Label, Symbol_Word>)
-			for(auto& tr : this->transitions.buffer)
-				std::erase(tr.label.second, Constants::Epsilon);*/
-	}
+	Transducer(MonoidalFSA<LabelType>&& mFSA): MonoidalFSA<LabelType>(std::move(mFSA)) {}
 
 	[[nodiscard]] LetterTransducer expand() &&
 		requires (!IsLetterType)
@@ -86,7 +82,7 @@ public:
 		expanded.transitions.buffer.reserve(this->transitions.buffer.size());
 		for(const auto& tr : this->transitions.buffer)
 		{
-			std::size_t maxLen = std::max(tr.Label().coords[0].size(), tr.Label().coords[1].size());
+			std::size_t maxLen = std::max(tr.Label().first.size(), tr.Label().second.size());
 			if(maxLen == 0)
 				throw std::runtime_error("bad label");
 			State lastState = tr.From();
@@ -105,16 +101,16 @@ public:
 		requires IsLetterType
 	{
 		auto tranformLabel = [](LabelType first, LabelType second) -> LabelType {
-			return {first.coords[0], second.coords[1]};
+			return {first.first, second.second};
 			};
 		auto labelCondition = [](LabelType first, LabelType second) -> bool {
-			return first.coords[1] == second.coords[0];
+			return first.second == second.first;
 			};
 		return this->product(rhs, tranformLabel, labelCondition);
 	}
-	[[nodiscard]] ClassicalFSA Domain() && requires IsLetterType { return std::move(*this).project([](LabelType lbl) { return lbl.coords[0]; }); }
+	[[nodiscard]] ClassicalFSA Domain() && requires IsLetterType { return std::move(*this).project([](LabelType lbl) { return lbl.first; }); }
 	[[nodiscard]] ClassicalFSA Domain() && requires (!IsLetterType) { return std::move(*this).project([](LabelType lbl) { return lbl.first; }); }
-	[[nodiscard]] ClassicalFSA Range() && requires IsLetterType { return std::move(*this).project([](LabelType lbl) { return lbl.coords[1]; }); }
+	[[nodiscard]] ClassicalFSA Range() && requires IsLetterType { return std::move(*this).project([](LabelType lbl) { return lbl.second; }); }
 	[[nodiscard]] ClassicalFSA Range() && requires (!IsLetterType) { return std::move(*this).project([](LabelType lbl) { return lbl.second; }); }
 	[[nodiscard]] ClassicalFSA Domain() const& { return Transducer{*this}.Domain(); }
 	[[nodiscard]] ClassicalFSA Range() const& { return Transducer{*this}.Range(); }
@@ -146,12 +142,11 @@ public:
 	{
 		LetterTransducer res;
 		res.initial.insert(res.statesCnt++);
-		for(SymbolPair sp : symbols)
+		for(const auto& pair : symbols)
 		{
-			for(Symbol s : sp.coords)
-				if(s != Constants::Epsilon)
-					res.alphabetUnion(s);
-			res.transitions.buffer.emplace_back(0, sp, res.statesCnt);
+			if(pair.first != Constants::Epsilon) res.alphabetUnion(pair.first);
+			// if(pair.second != Constants::Epsilon) res.alphabetUnion(pair.second);
+			res.transitions.buffer.emplace_back(0, pair, res.statesCnt);
 			res.final.insert(res.statesCnt++);
 		}
 		return res;
@@ -162,53 +157,31 @@ public:
 		Transducer<false, Symbol_Word> rtime;
 		rtime.statesCnt = this->statesCnt;
 		TransitionList<Word> closure = epsilonClosureTape1(), reversed = closure;
-		closure.sort();
-		reversed.reverse().sort();
+		closure.sort(this->statesCnt);
+		reversed.reverse().sort(this->statesCnt);
 
 		// final states and outputs for epsilon
 		rtime.final = this->final;
-		/*for(State st = 0; st < this->statesCnt; st++)
-			if(this->initial.contains(st)) // why???
-				for(State st : this->initial)
-					for(const auto& tr : closure(st))
-						if(this->final.contains(tr.To()))
-						{
-							outputsForEpsilon.push_back(tr.Label());
-							rtime.final.insert(st);
-							// break;
-						}*/
-
-		if(outputsForEpsilon)
-		{
-			for(State st : this->initial)
-				for(const auto& tr : closure(st))
-					if(this->final.contains(tr.To()))
-					{
+		for(State st : this->initial)
+			for(const auto& tr : closure(st))
+				if(this->final.contains(tr.To()))
+				{
+					if(outputsForEpsilon)
 						outputsForEpsilon->insert(tr.Label());
-						rtime.final.insert(st); //!!!
-					}
-		}
-		else
-			for(State st : this->initial)
-				for(const auto& tr : closure(st))
-					if(this->final.contains(tr.To()))
-					{
-						rtime.final.insert(st); //!!!
-						break;
-					}
+					rtime.final.insert(st);
+				}
 
 		// transitions
 		for(const auto& tr : this->transitions.buffer)
-			if(tr.Label().coords[0] != Constants::Epsilon)
+			if(tr.Label().first != Constants::Epsilon)
 				for(const auto& trPrev : reversed(tr.From()))
 					for(const auto& trNext : closure(tr.To()))
 					{
 						Word lbl;
 						lbl.reserve(trPrev.Label().size() + 1 + trNext.Label().size());
-						lbl.append(trPrev.Label()).push_back(tr.Label().coords[1]);
+						lbl.append(trPrev.Label()).push_back(tr.Label().second);
 						lbl.append(trNext.Label());
-						//std::erase(lbl, Constants::Epsilon);
-						rtime.transitions.buffer.emplace_back(trPrev.To(), Symbol_Word{tr.Label().coords[0], std::move(lbl)}, trNext.To());
+						rtime.transitions.buffer.emplace_back(trPrev.To(), Symbol_Word{tr.Label().first, std::move(lbl)}, trNext.To());
 					}
 
 		rtime.initial = std::move(this->initial);
@@ -224,10 +197,10 @@ public:
 	bool epsilonInDom()
 		requires IsLetterType
 	{
-		this->transitions.sort();
+		this->transitions.sort(this->statesCnt);
 		bool finalReachable = false;
 		auto markFinal = [&final = std::as_const(this->final), &finalReachable](State st) { if(final.contains(st)) finalReachable = true; };
-		auto isEpsTransitionTape1 = [](const Transition<LabelType>& tr) { return tr.Label().coords[0] == Constants::Epsilon; };
+		auto isEpsTransitionTape1 = [](const Transition<LabelType>& tr) { return tr.Label().first == Constants::Epsilon; };
 		for(auto it = this->initial.begin(); !finalReachable && it != this->initial.end(); ++it)
 			this->BFS(*it, markFinal, isEpsTransitionTape1);
 		return finalReachable;
