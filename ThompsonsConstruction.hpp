@@ -35,7 +35,7 @@ public:
 		stateBuffer.resize(stateBuffer.size() + 2); // 2 new states
 		return {static_cast<State>(stateBuffer.size() - 2), static_cast<State>(stateBuffer.size() - 1)};
 	}
-	static ThompsonAutomaton createForBase(LabelType&& label, std::vector<ThompsonState<LabelType>>& stateBuffer)
+	static ThompsonAutomaton createForBase(LabelType label, std::vector<ThompsonState<LabelType>>& stateBuffer)
 	{
 		stateBuffer.emplace_back(); // new final state
 		stateBuffer.push_back({{ {std::move(label), static_cast<State>(stateBuffer.size() - 1)} }}); // new initial state
@@ -80,7 +80,7 @@ ThompsonAutomaton<LabelType> ThompsonConstruction(const RegularExpression<LabelT
 	stateBuffer.clear();
 	stateBuffer.reserve(2 * re.TokenizedReversePolishNotation().size());
 	std::stack<ThompsonAutomaton<LabelType>> st;
-	auto baseElemIt = const_cast<std::vector<LabelType>&>(re.BaseTokens()).begin();
+	auto baseElemIt = re.BaseTokens().begin();
 	for(Symbol c : re.TokenizedReversePolishNotation())
 		switch(c)
 		{
@@ -88,7 +88,7 @@ ThompsonAutomaton<LabelType> ThompsonConstruction(const RegularExpression<LabelT
 			st.push(ThompsonAutomaton<LabelType>::createForEmpty(stateBuffer));
 			break;
 		case Constants::BasePlaceholder:
-			st.push(ThompsonAutomaton<LabelType>::createForBase(std::move(*baseElemIt++), stateBuffer));
+			st.push(ThompsonAutomaton<LabelType>::createForBase(*baseElemIt++, stateBuffer));
 			break;
 		case Constants::KleeneStar:
 		{
