@@ -108,10 +108,8 @@ public:
 			};
 		return this->product(rhs, tranformLabel, labelCondition);
 	}
-	[[nodiscard]] ClassicalFSA Domain() && requires IsLetterType { return std::move(*this).project([](LabelType lbl) { return lbl.first; }); }
-	[[nodiscard]] ClassicalFSA Domain() && requires (!IsLetterType) { return std::move(*this).project([](LabelType lbl) { return lbl.first; }); }
-	[[nodiscard]] ClassicalFSA Range() && requires IsLetterType { return std::move(*this).project([](LabelType lbl) { return lbl.second; }); }
-	[[nodiscard]] ClassicalFSA Range() && requires (!IsLetterType) { return std::move(*this).project([](LabelType lbl) { return lbl.second; }); }
+	[[nodiscard]] ClassicalFSA Domain() && { return std::move(*this).project([](LabelType lbl) { return lbl.first; }); }
+	[[nodiscard]] ClassicalFSA Range() && { return std::move(*this).project([](LabelType lbl) { return lbl.second; }); }
 	[[nodiscard]] ClassicalFSA Domain() const& { return Transducer{*this}.Domain(); }
 	[[nodiscard]] ClassicalFSA Range() const& { return Transducer{*this}.Range(); }
 	[[nodiscard]] static LetterTransducer identity(ClassicalFSA&& fsa)
