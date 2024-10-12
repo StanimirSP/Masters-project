@@ -224,7 +224,7 @@ public:
 		ClassicalFSA A_rho = construct_A_rho(batch);
 		A_T = construct_A_T(batch);
 		A_rho.transitions.sort(A_rho.statesCnt);
-		A_T.transitions.sortByTo(A_T.statesCnt); // may reduce the side of the constructed automaton
+		A_T.transitions.sortByTo(A_T.statesCnt); // may reduce the size of the constructed automaton
 		A_T.transitions.sort(A_T.statesCnt);
 
 		A_R.stateNames.emplace(computeInitial_A_R(A_rho), 0);
